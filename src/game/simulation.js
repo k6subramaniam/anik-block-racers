@@ -1,0 +1,97 @@
+import { nearestRoad, stepRace, ROAD_WIDTH, TRACK } from './track.js'
+
+export const SPAWN = { x: 8, z: 18.2, yaw: Math.PI/2 }
+export const MAX_SPEED = 23 // 82.8 km/h
+export const MAX_REVERSE = -7
+export const CAR_RADIUS = 0.84
+export const SAFE_ROAD_HALF_WIDTH = ROAD_WIDTH/2 - CAR_RADIUS + .12
+export const INPUT_DEFAULT = Object.freeze({ forward: false, backward: false, left: false, right: false, drift: false })
+
+export function initialRaceState() {
+  return {
+    x: SPAWN.x, z: SPAWN.z, yaw: SPAWN.yaw, speed: 0,
+    lap: 1, checkpoint: 0, elapsed: 0, lastLapStart: 0,
+    bestLap: null, event: null, collisions: 0,
+  }
+}
+
+export function nearestObstacle(position, obstacles = []) {
+  let closest=null
+  for(const o of obstacles){
+    const gap=Math.hypot(position.x-o.x,position.z-o.z)-(o.radius??1)-CAR_RADIUS
+    if(gap<0 && (!closest || gap<closest.gap)) closest={ ...o, gap }
+  }
+  return closest
+}
+
+export function moveKart(state, input, delta, obstacles = []) {
+  const dt = Math.min(Math.max(0,delta), .05)
+  if (!dt) return state
+  let speed = state.speed
+  const gas = Number(!!input.forward) - Number(!!input.backward)
+  const steering = Number(!!input.right) - Number(!!input.left)
+  const drifting = !!input.drift
+
+  if(gas === 1) speed += (speed < 0 ? 24 : 13.0)*dt
+  else if(gas === -1) speed -= (speed > 0 ? 26 : 9.0)*dt
+  else {
+    const decel = (2.9 + speed*speed*.009)*dt
+    speed = Math.abs(speed) <= decel ? 0 : speed - Math.sign(speed)*decel
+  }
+  speed = Math.max(MAX_REVERSE,Math.min(state.boostTimer > 0 ? MAX_SPEED + 7 : MAX_SPEED,speed))
+  const turnStrength = Math.min(1, Math.abs(speed)/10)
+  const reverse = speed < 0 ? -1 : 1
+  const turnRate = (drifting ? 2.05 : 1.37) * (.35 + .65*turnStrength)
+  const yaw = state.yaw - steering*turnRate*dt*reverse
+  let x = state.x - Math.sin(yaw)*speed*dt
+  let z = state.z - Math.cos(yaw)*speed*dt
+  let event=null
+  let collisions = state.collisions
+
+  const road = nearestRoad({x,z}, TRACK)
+  if (road.distance > SAFE_ROAD_HALF_WIDTH) {
+    const overshootX=x-road.x, overshootZ=z-road.z
+    const inv=1/Math.max(road.distance,1e-6)
+    x = road.x+overshootX*inv*SAFE_ROAD_HALF_WIDTH
+    z = road.z+overshootZ*inv*SAFE_ROAD_HALF_WIDTH
+    speed = -Math.sign(speed)*Math.min(Math.abs(speed)*.19, 3)
+    event='wall'
+    collisions++
+  }
+
+  const obstacle = nearestObstacle({x,z},obstacles)
+  if(obstacle){
+    // Resolve the circle collision instead of allowing model interpenetration.
+    const dx=x-obstacle.x, dz=z-obstacle.z
+    const len=Math.hypot(dx,dz)||1
+    const safe=(obstacle.radius??1)+CAR_RADIUS+.03
+    const candidate={x:obstacle.x+dx/len*safe,z:obstacle.z+dz/len*safe}
+    // Never push a kart through the outside barriers while resolving an obstacle.
+    if(nearestRoad(candidate).distance<=SAFE_ROAD_HALF_WIDTH+.03){
+      x=candidate.x;z=candidate.z
+    }else{
+      x=state.x;z=state.z
+    }
+    speed = -Math.sign(speed)*Math.min(Math.abs(speed)*.18,2)
+    event='obstacle'
+    collisions++
+  }
+  return {...state,x,z,yaw,speed,collisions,event}
+}
+
+export function advanceKart(state, input, dt, obstacles=[]) {
+  // Race clock advances only when actively racing; pause/countdown call moveKart no-op.
+  const moved=moveKart(state,input,dt,obstacles)
+  const elapsed=state.elapsed + Math.max(0,Math.min(dt,.05))
+  const stepped=stepRace({ ...moved, elapsed }, state, moved)
+  return { ...stepped, event: stepped.event || moved.event }
+}
+
+export function formatTime(seconds) {
+  if (seconds == null) return '--:--.--'
+  const hundredths=Math.floor(Math.max(0,seconds)*100)
+  const mins=Math.floor(hundredths/6000)
+  const secs=Math.floor((hundredths%6000)/100)
+  const hundred=hundredths%100
+  return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}.${String(hundred).padStart(2,'0')}`
+}

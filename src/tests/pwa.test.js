@@ -38,3 +38,12 @@ test('mobile controls, graphics chooser, offline registration, and visibility pa
   assert.match(worker,/const MODEL =/)
   assert.match(worker,/PRECACHE/)
 })
+
+test('offline caching is scoped to ANIK and revised when build assets change',()=>{
+  const workerSource=readFileSync(join(projectRoot,'scripts/generate-service-worker.mjs'),'utf8')
+  assert.match(workerSource,/createHash\('sha256'\)/)
+  assert.match(workerSource,/fingerprint\.update\(await readFile/)
+  assert.match(workerSource,/key\.startsWith\(CACHE_PREFIX\)/)
+  assert.match(workerSource,/url\.href !== MODEL/)
+  assert.doesNotMatch(workerSource,/keys\.filter\(key => !\[SHELL, GAME_ASSETS\]/)
+})

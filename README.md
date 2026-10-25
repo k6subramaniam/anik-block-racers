@@ -1,4 +1,4 @@
-# ANIK Block Racers — Open World Galaxy Edition (v2.0)
+# ANIK Block Racers — AI Rivals & Voxel Wildlife (Open World v2.1) (v2.0)
 
 **Real playable 3D world** for Samsung Galaxy and modern Android browsers. Based on the original Higgsfield 3D Jutsu asset scene, updated with five themed zones and connecting roads. The game remains an original voxel racer, not a Minecraft/Mojang product.
 
@@ -59,3 +59,16 @@ The installed PWA should refresh automatically after an online launch and reload
 ## Limitations / next milestones
 
 This is a **bounded** open-world prototype, not an infinite Minecraft map. Terrain is primarily flat, with towering background landmark geometry. Bridges and mountains are scenery, not climbable race physics. Car physics uses 2D planar movement with simplified obstacles. No multiplayer, traffic AI, saves/account sync, Android APK/AAB, or dedicated 60 FPS guarantee yet. A device test on physical Samsung hardware is required for real FPS, memory usage, battery drain and reliable offline installation.
+
+
+## v2.1 — AI racers, roaming wildlife and crash mechanics
+
+- **3 AI rival karts:** BOLT, NOVA and PIXEL automatically race around the original Voxel Valley course at different speeds, then patrol the open-world road network when Explore is selected. They use the existing Higgsfield kart mesh recolored per rival.
+- **8 voxel creature bots:** foxes, sheep, boars and crystal cubs roam across the districts, wander near their spawn territories and flee approaching racers. These are stylized game creatures, not depictions of realistic animal harm.
+- **Ram-to-damage:** steering into a bot at speed removes hit points (visible overhead). Slow touches do not cause damage. Defeated bots burst into harmless voxel cubes and respawn after 11 seconds.
+- **On-screen scoreboard:** BOTS SMASHED and arcade points (100 for a rival kart, 40 for a creature). Bots survive multiple crashes depending on impact speed. Health and AI states reset when restarting a race or free roam; points reset intentionally.
+- **Galaxy performance:** AI simulation is deterministic; moving meshes use refs instead of triggering React rerenders 60 times per second. Faraway bots are culled; animals are simple block meshes with no image texture downloads.
+
+**How to play:** Start **RACE 3 LAPS** to compete against rival karts, or **EXPLORE OPEN WORLD** to encounter the animals and roaming karts. Accelerate, aim your kart toward an NPC and crash into it at speed; avoid slow side-swipes. The orange AI health bar diminishes with impacts; the bot bursts into cubes when health is depleted. The top-right **BOTS SMASHED** indicator tracks knockouts. There are no weapons and no realistic gore.
+
+**QA:** Run `npm test` for the deterministically simulated NPC behavior and ramming mechanics, or inspect the GitHub Actions build for the compiled mobile web app. Physical Samsung frame rate and battery impact still require real-device validation.

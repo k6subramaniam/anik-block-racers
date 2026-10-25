@@ -263,3 +263,19 @@ button{touch-action:manipulation;cursor:pointer}
   .map-panel-header h2{font-size:22px}
   .map-graphic > svg{max-height:160px}
 }
+
+/* AI crash-arena HUD; keep Samsung landscape controls free of overlays. */
+.ai-smash-stat{border-color:rgba(247,160,69,.32)!important;background:rgba(48,38,27,.82)!important}
+.ai-smash-stat svg{color:#ffc06c}
+.ai-smash-stat small{white-space:nowrap}
+.ai-smash-stat b{white-space:nowrap;color:#ffce8a}
+.smash-points{font-size:9px;font-weight:800;color:#b9ecb2}
+@media (pointer:coarse) and (orientation:landscape){
+  .ai-smash-stat{padding:5px 7px!important}
+  .ai-smash-stat svg{width:13px;height:13px}
+  .ai-smash-stat small{font-size:8px!important;letter-spacing:.2px!important}
+  .ai-smash-stat b{font-size:14px!important}
+  .smash-points{font-size:8px}
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-width:800px){.ai-smash-stat .smash-points{display:none}}
+@media (pointer:coarse) and (orientation:portrait){.ai-smash-stat .smash-points{display:none}}

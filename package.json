@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "1.1.0",
+  "version": "2.1.0",
   "type": "module",
-  "description": "Samsung Galaxy Edition: landscape 3D kart racer with touchscreen and offline-capable installable PWA",
+  "description": "Open-world Galaxy racer with 3 AI rivals, 8 voxel wildlife bots, ramming damage and offline-capable PWA",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

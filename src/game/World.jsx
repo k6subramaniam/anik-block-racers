@@ -7,6 +7,8 @@ import { TRACK, trackBarriers } from './track.js'
 import { advanceKart, initialRaceState, SPAWN, MAX_SPEED } from './simulation.js'
 import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } from './openWorld.js'
 import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
+import {makeNpcs, advanceNpcs, applyRamming} from './npcAI.js'
+import NpcActors from './NpcActors.jsx'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/0e25123b-02d4-42d1-bc43-5e507f5f3998.glb'
 const walls = trackBarriers()
@@ -69,9 +71,9 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
   const rigid = useRef(null)
-  const race = useRef(initialRaceState())
+  const race = playerRef
   const elapsedHudRefresh = useRef(0)
   const cameraTarget = useRef(new THREE.Vector3(SPAWN.x,1.1,SPAWN.z))
   const lastCollisionToast = useRef(-5)
@@ -82,6 +84,7 @@ function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken,
   useEffect(() => {
     const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
+    npcRef.current=makeNpcs(mode)
     elapsedHudRefresh.current = 0
     lastCoinTick.current = new Map()
     cameraTarget.current.set(fresh.x,1.1,fresh.z)
@@ -91,7 +94,7 @@ function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken,
       rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
       rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
     }
-    setHud({ ...fresh, countdown: 3, coins: 0 })
+    setHud({ ...fresh, countdown: 3, coins: 0, botsDefeated:0, smashScore:0, rivalKnockouts:0, wildlifeKnockouts:0, rivalsActive:3, wildlifeActive:mode==='explore'?8:0 })
   }, [resetToken, mode, setHud])
 
   useEffect(()=>{
@@ -104,7 +107,7 @@ function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken,
       rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
     }
     cameraTarget.current.set(fresh.x,1.2,fresh.z)
-    setHud({...fresh})
+    setHud({...fresh,botsDefeated:fresh.botsDefeated||0,smashScore:fresh.smashScore||0})
     onEvent('travel',fresh)
   },[mode,warpRequest,setHud,onEvent])
 
@@ -124,6 +127,21 @@ function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken,
         next=mode==='explore'
           ? advanceExplore(old,inputRef.current,dt,objects)
           : advanceKart(old,inputRef.current,dt,objects)
+        // AI updates and player-initiated rams share this deterministic frame step.
+        // This avoids game/visual desync, repetitive hit damage and teleport hits.
+        const moving=advanceNpcs(npcRef.current,dt,next,mode)
+        const impact=applyRamming(next,moving,dt)
+        npcRef.current=impact.npcs
+        if(impact.event){
+          next={...impact.player,event:impact.event.kind,npcName:impact.event.npcName,
+            npcKind:impact.event.npcKind,hitDamage:impact.event.damage,
+            botsDefeated:(old.botsDefeated||0)+impact.racerKnockouts+impact.animalKnockouts,
+            rivalKnockouts:(old.rivalKnockouts||0)+impact.racerKnockouts,
+            wildlifeKnockouts:(old.wildlifeKnockouts||0)+impact.animalKnockouts,
+            smashScore:(old.smashScore||0)+impact.points}
+          frameEvent=impact.event.kind
+        }
+
         next.boostTimer=Math.max(0,(old.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)
         for(const pad of boostLocations){
@@ -198,6 +216,10 @@ function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken,
         speed:next.speed,lap:next.lap,checkpoint:next.checkpoint,
         elapsed:next.elapsed,bestLap:next.bestLap,collisions:next.collisions,
         coins:next.coins||0, boostTimer:next.boostTimer||0,
+        botsDefeated:next.botsDefeated||0, smashScore:next.smashScore||0,
+        rivalKnockouts:next.rivalKnockouts||0, wildlifeKnockouts:next.wildlifeKnockouts||0,
+        rivalsActive:npcRef.current.filter(n=>n.kind==='racer'&&n.health>0).length,
+        wildlifeActive:npcRef.current.filter(n=>n.kind==='animal'&&n.health>0).length,
         zoneName:next.zoneName||'VOXEL VALLEY',
         visited:next.visited||[],collected:next.collected||[],
       })
@@ -217,6 +239,8 @@ function LoadedLevel(props){
   const gltf=useGLTF(MODEL_URL)
   const {track,kart,objects,cullRoots}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
   const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES]:objects,[props.mode,objects])
+  const npcRef=useRef(makeNpcs(props.mode))
+  const playerRef=useRef(initialRaceState())
   // Only the High preset renders real-time shadow maps on mobile GPUs.
   useEffect(()=>{
     track.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows && (child.name.startsWith('CASTLE_')||child.name.includes('crown')||child.name.includes('hood'))})
@@ -226,10 +250,11 @@ function LoadedLevel(props){
   return <>
     <primitive object={track} />
     <OpenWorldDecor />
+    <NpcActors key={props.mode} npcRef={npcRef} playerRef={playerRef} kartSource={kart} mode={props.mode} />
     {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
     <Physics gravity={[0,0,0]} timeStep={1/60} colliders={false} interpolation={false}>
       <StaticColliders objects={objects} mode={props.mode} />
-      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} />
+      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} npcRef={npcRef} playerRef={playerRef} />
     </Physics>
   </>
 }

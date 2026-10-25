@@ -235,6 +235,11 @@ export default function App(){
   },[])
   useEffect(()=>()=>{if(toastTime.current)clearTimeout(toastTime.current)},[])
   useKeyboard(inputRef,{start,restart,togglePause,toggleCamera,onBlur,openMap,startExplore,startRaceMode})
+  // The PWA launcher shortcut should open free roam, not merely show the intro.
+  useEffect(()=>{
+    if(!loaded || phase!=='ready')return
+    if(new URLSearchParams(window.location.search).get('source')==='shortcut-explore') startExplore()
+  },[loaded,phase,startExplore])
   useEffect(()=>{
     try {localStorage.setItem('anik-quality',quality)} catch {}
   },[quality])

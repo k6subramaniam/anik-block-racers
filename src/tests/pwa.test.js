@@ -47,3 +47,14 @@ test('offline caching is scoped to ANIK and revised when build assets change',()
   assert.match(workerSource,/url\.href !== MODEL/)
   assert.doesNotMatch(workerSource,/keys\.filter\(key => !\[SHELL, GAME_ASSETS\]/)
 })
+
+
+test('open world launcher shortcut starts exploration when 3D world is ready',()=>{
+  const manifest=JSON.parse(readFileSync(join(projectRoot,'public/manifest.webmanifest'),'utf8'))
+  const shortcut=manifest.shortcuts.find(s=>s.short_name==='Explore World')
+  assert.ok(shortcut)
+  assert.match(shortcut.url,/shortcut-explore/)
+  const app=readFileSync(join(projectRoot,'src/App.jsx'),'utf8')
+  assert.match(app,/get\('source'\)==='shortcut-explore'/)
+  assert.match(app,/if\(!loaded \|\| phase!=='ready'\)return/)
+})

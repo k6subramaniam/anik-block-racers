@@ -4,7 +4,7 @@ Reviewed October 25, 2026.
 
 ## Confirmed tests
 
-- **PASS — 37/37 Node unit tests:** existing racing (acceleration, steering, collisions, two ordered checkpoints, 3-lap finish), Samsung PWA behavior, five open-world zones, world bounds, landmark blockers, fast travel, portal, collectible relics, one-time bonuses, lava rescue, minimap projection, and a 30,000-step stable free-roam simulation.
+- **PASS — 38/38 Node unit tests:** existing racing (acceleration, steering, collisions, two ordered checkpoints, 3-lap finish), Samsung PWA behavior, five open-world zones, world bounds, landmark blockers, fast travel, portal, collectible relics, one-time bonuses, lava rescue, minimap projection, and a 30,000-step stable free-roam simulation, including the new Explore launcher shortcut routing.
 - **PASS — React JSX parse:** `src/App.jsx`, `src/game/World.jsx`, `src/game/OpenWorldDecor.jsx` parsed with TypeScript compiler syntax checking.
 - **PASS — GitHub Actions build and deploy:** https://github.com/k6subramaniam/anik-block-racers/actions/runs/40231913630 (includes Node test, Vite build, GitHub Pages deploy).
 - **PASS — Live Chrome/Playwright, emulated Samsung-size 915×412, touch enabled:** open-world intro ready, Explore opens, touch controls visible, five fast-travel destinations appear, tapping Neon City changes district, returning to the three-lap circuit restores the racing HUD, JavaScript runtime errors = 0, required 3D asset requests failed = 0, horizontal overflow = none.

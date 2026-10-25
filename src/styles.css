@@ -211,8 +211,8 @@ button{touch-action:manipulation;cursor:pointer}
 .map-panel-header button{min-height:37px;min-width:37px;background:#21383b;border:1px solid #77908f70;border-radius:9px;color:#f2fff2;display:grid;place-items:center}
 .map-layout{display:grid;grid-template-columns:1fr 1.17fr;gap:16px;padding:13px 0}
 .map-graphic{background:#101d21;border:1px solid #46615c;border-radius:10px;padding:9px;align-self:start}
-.map-graphic svg{width:100%;height:auto;max-height:255px}
-.map-graphic p{display:flex;align-items:center;gap:7px;color:#bcd4ca;font-size:10px;margin:4px 5px}
+.map-graphic > svg{width:100%;height:auto;max-height:255px}
+.map-graphic p{display:flex;align-items:center;gap:7px;color:#bcd4ca;font-size:10px;margin:4px 5px}.map-graphic p svg{width:14px;height:14px;flex:0 0 14px}
 .map-guide{font-size:11px;color:#b2c6c1;line-height:1.5;margin:0 0 8px}
 .map-destinations{display:flex;flex-direction:column;gap:6px}
 .map-place{display:flex;align-items:center;gap:10px;text-align:left;padding:8px 10px;border:1px solid #ffffff29;background:#ffffff0b;color:#eef9ee;border-radius:9px;min-height:47px}
@@ -239,7 +239,7 @@ button{touch-action:manipulation;cursor:pointer}
   .map-panel-header h2{font-size:25px}
   .map-panel-header small{font-size:8px}
   .map-layout{grid-template-columns:.8fr 1.2fr;gap:12px;padding:7px 0}
-  .map-graphic svg{max-height:185px}
+  .map-graphic > svg{max-height:185px}
   .map-guide{font-size:9px;margin:0 0 4px}
   .map-place{min-height:31px;padding:4px 7px;gap:6px}
   .map-place-icon{width:23px;height:23px;font-size:13px}
@@ -261,5 +261,5 @@ button{touch-action:manipulation;cursor:pointer}
   .intro-panel .mobile-intro-tip{display:none}
   .intro-actions .primary-button,.intro-actions .intro-race-button{min-height:39px}
   .map-panel-header h2{font-size:22px}
-  .map-graphic svg{max-height:160px}
+  .map-graphic > svg{max-height:160px}
 }

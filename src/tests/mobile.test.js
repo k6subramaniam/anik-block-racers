@@ -51,3 +51,11 @@ test('desktop defaults to high graphics without reducing quality',()=>{
   assert.equal(opts.tier,'high')
   assert.equal(opts.antialias,true)
 })
+
+test('Galaxy world map labels keep the small compass graphic compact', async()=>{
+  const {readFileSync}=await import('node:fs')
+  const {join,resolve}=await import('node:path')
+  const css=readFileSync(join(resolve(import.meta.dirname,'../..'),'src/styles.css'),'utf8')
+  assert.ok(css.includes('.map-graphic > svg{width:100%'))
+  assert.ok(css.includes('.map-graphic p svg{width:14px;height:14px'))
+})

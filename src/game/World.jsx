@@ -5,8 +5,10 @@ import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { TRACK, trackBarriers } from './track.js'
 import { advanceKart, initialRaceState, SPAWN, MAX_SPEED } from './simulation.js'
+import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } from './openWorld.js'
+import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
 
-const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/a39fc13c-8c8d-49e0-aeb1-aa21216a6228.glb'
+const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/0e25123b-02d4-42d1-bc43-5e507f5f3998.glb'
 const walls = trackBarriers()
 const boostLocations = [28,70,105,143].map(index => ({index, ...TRACK[index]}))
 const coinLocations = [12,21,34,42,57,64,81,93,116,123,133,151].map(index => ({index, ...TRACK[index]}))
@@ -22,9 +24,11 @@ function makeGameAssets(scene) {
   kart.rotation.set(0,0,0)
   kart.scale.set(1,1,1)
   const objects = []
+  const cullRoots = []
   track.updateMatrixWorld(true)
   track.traverse(child => {
     if (child.name === 'PREFAB_kart_emerald' || child.name === 'PREFAB_kart_amber' || child.isCamera || child.isLight) child.visible = false
+    if (child.type === 'Object3D' && child.name.startsWith('OW_HERO_') && child.children.length) cullRoots.push(child)
     if (child.isMesh) {
       child.receiveShadow = child.name.startsWith('TRACK_') || child.name.startsWith('ENV_')
       child.castShadow = child.name.startsWith('CASTLE_') || child.name.includes('crown') || child.name.includes('hood')
@@ -37,13 +41,13 @@ function makeGameAssets(scene) {
       objects.push({ id: child.name, x: p.x, z: p.z, radius: child.name.includes('castle') ? 4.9 : child.name.includes('boulder') ? 1.15 : .6 })
     }
   })
-  return { track, kart, objects }
+  return { track, kart, objects, cullRoots }
 }
 
-function StaticColliders({ objects }) {
+function StaticColliders({ objects, mode }) {
   return <>
     {/* Invisible fixed Rapier volumes correspond to the visible Higgsfield curbs. */}
-    {walls.map(w => <CuboidCollider key={w.id} position={[w.x,.56,w.z]} rotation={[0,w.yaw,0]} args={[w.length/2,.65,.19]} />)}
+    {mode==='race' && walls.map(w => <CuboidCollider key={w.id} position={[w.x,.56,w.z]} rotation={[0,w.yaw,0]} args={[w.length/2,.65,.19]} />)}
     {objects.map(o => <CuboidCollider key={o.id} position={[o.x,.8,o.z]} args={[o.radius,.8,o.radius]} />)}
   </>
 }
@@ -55,7 +59,7 @@ function TrackFx({ vehicleRef, phase }) {
     ring.current.rotation.z += dt*1.6
     const v = vehicleRef.current
     ring.current.position.set(v.x,.36,v.z)
-    ring.current.visible = phase==='racing' && (v.boostTimer||0)>0
+    ring.current.visible = (phase==='racing'||phase==='exploring') && (v.boostTimer||0)>0
   })
   return <group ref={ring} rotation={[-Math.PI/2,0,0]} position={[0,.36,0]} visible={false}>
     <mesh>
@@ -65,27 +69,44 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ kart, objects, cullRoots, phase, mode, warpRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
   const rigid = useRef(null)
   const race = useRef(initialRaceState())
   const elapsedHudRefresh = useRef(0)
   const cameraTarget = useRef(new THREE.Vector3(SPAWN.x,1.1,SPAWN.z))
   const lastCollisionToast = useRef(-5)
   const lastCoinTick = useRef(new Map())
+  const nextCull = useRef(0)
   const { camera } = useThree()
 
   useEffect(() => {
-    const fresh = initialRaceState()
+    const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
     elapsedHudRefresh.current = 0
     lastCoinTick.current = new Map()
+    cameraTarget.current.set(fresh.x,1.1,fresh.z)
+    nextCull.current=0
     if(rigid.current){
       rigid.current.setTranslation({ x: fresh.x, y: 0, z: fresh.z },true)
       rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
       rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
     }
     setHud({ ...fresh, countdown: 3, coins: 0 })
-  }, [resetToken, setHud])
+  }, [resetToken, mode, setHud])
+
+  useEffect(()=>{
+    if(mode!=='explore'||!warpRequest)return
+    const fresh=fastTravel(race.current,warpRequest.zoneId)
+    race.current=fresh
+    if(rigid.current){
+      rigid.current.setTranslation({x:fresh.x,y:0,z:fresh.z},true)
+      rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
+      rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
+    }
+    cameraTarget.current.set(fresh.x,1.2,fresh.z)
+    setHud({...fresh})
+    onEvent('travel',fresh)
+  },[mode,warpRequest,setHud,onEvent])
 
   useFrame((_,rawDt) => {
     // Catch up on elapsed wall time in safe 50 ms simulation substeps. This also
@@ -94,13 +115,15 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
     const smoothDt=Math.min(frameDt,.05)
     let next=race.current
     let frameEvent=null
-    if(phase === 'racing'){
+    if(phase === 'racing' || phase==='exploring'){
       let remaining=frameDt
       while(remaining>0.00001){
         const dt=Math.min(.05,remaining)
         remaining-=dt
         const old=next
-        next=advanceKart(old,inputRef.current,dt,objects)
+        next=mode==='explore'
+          ? advanceExplore(old,inputRef.current,dt,objects)
+          : advanceKart(old,inputRef.current,dt,objects)
         next.boostTimer=Math.max(0,(old.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)
         for(const pad of boostLocations){
@@ -109,8 +132,8 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
             break
           }
         }
-        let coins=old.coins||0
-        for(const coin of coinLocations){
+        let coins=mode==='race' ? old.coins||0 : next.coins||0
+        for(const coin of (mode==='race'?coinLocations:[])){
           if(!lastCoinTick.current.has(coin.index) && Math.hypot(next.x-coin.x,next.z-coin.z)<1.15){
             lastCoinTick.current.set(coin.index,true)
             coins++
@@ -119,7 +142,7 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
         }
         next.coins=coins
         if(next.event){
-          if(next.event==='wall' || next.event==='obstacle'){
+          if(next.event==='wall' || next.event==='obstacle'||next.event==='border'){
             if(next.elapsed-lastCollisionToast.current>.9){
               lastCollisionToast.current=next.elapsed
               frameEvent=next.event
@@ -132,7 +155,16 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
       }
       race.current=next
       if(frameEvent) onEvent(frameEvent,next)
-      if(next.event==='finished') onPhase('finished')
+      if(mode==='race' && next.event==='finished') onPhase('finished')
+    }
+    // Coarse frustum-distance gating: distant hero districts don't cost phone
+    // GPU draw calls when they are hundreds of metres from the camera.
+    if(cullRoots && (nextCull.current-=frameDt)<=0){
+      nextCull.current=.35
+      for(const root of cullRoots){
+        const dx=root.position.x-next.x,dz=root.position.z-next.z
+        root.visible=dx*dx+dz*dz < (mode==='explore'?150:140)**2
+      }
     }
     if(rigid.current){
       rigid.current.setNextKinematicTranslation({x:next.x,y:0,z:next.z})
@@ -166,6 +198,8 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
         speed:next.speed,lap:next.lap,checkpoint:next.checkpoint,
         elapsed:next.elapsed,bestLap:next.bestLap,collisions:next.collisions,
         coins:next.coins||0, boostTimer:next.boostTimer||0,
+        zoneName:next.zoneName||'VOXEL VALLEY',
+        visited:next.visited||[],collected:next.collected||[],
       })
     }
   })
@@ -181,7 +215,8 @@ function Racer({ kart, objects, phase, resetToken, inputRef, cameraMode, setHud,
 
 function LoadedLevel(props){
   const gltf=useGLTF(MODEL_URL)
-  const {track,kart,objects}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
+  const {track,kart,objects,cullRoots}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
+  const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES]:objects,[props.mode,objects])
   // Only the High preset renders real-time shadow maps on mobile GPUs.
   useEffect(()=>{
     track.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows && (child.name.startsWith('CASTLE_')||child.name.includes('crown')||child.name.includes('hood'))})
@@ -190,9 +225,11 @@ function LoadedLevel(props){
   useEffect(()=>{props.onReady(true)},[props.onReady])
   return <>
     <primitive object={track} />
+    <OpenWorldDecor />
+    {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
     <Physics gravity={[0,0,0]} timeStep={1/60} colliders={false} interpolation={false}>
-      <StaticColliders objects={objects} />
-      <Racer {...props} kart={kart} objects={objects} />
+      <StaticColliders objects={objects} mode={props.mode} />
+      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} />
     </Physics>
   </>
 }
@@ -200,10 +237,10 @@ function LoadedLevel(props){
 export default function RacingScene(props){
   const budget=props.budget
   return <Canvas className="game-canvas" shadows={budget.shadows} dpr={budget.dpr}
-    camera={{position:[10,9,29],fov:54,near:.1,far:300}}
+    camera={{position:[10,9,29],fov:54,near:.1,far:420}}
     gl={{alpha:false,antialias:budget.antialias,powerPreference:'high-performance',stencil:false}}>
     <color attach="background" args={['#adcee1']} />
-    <fog attach="fog" args={['#adcee1',85,140]} />
+    <fog attach="fog" args={['#adcee1',135,230]} />
     <ambientLight intensity={1.75} />
     <hemisphereLight args={['#e6f6ff','#619768',1.05]} />
     <directionalLight castShadow={budget.shadows} position={[-22,38,12]} intensity={2.2} shadow-mapSize-width={budget.shadowMap} shadow-mapSize-height={budget.shadowMap} shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45} shadow-bias={-.00015} />

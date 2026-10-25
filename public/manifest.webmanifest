@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Galaxy Edition",
+  "name": "ANIK Block Racers — Open World",
   "short_name": "ANIK Racers",
-  "description": "Race three laps through a real 3D voxel world. Designed for Samsung Galaxy and other Android phones.",
+  "description": "Explore five voxel realms, collect relics, and race three laps in real 3D. Made for Samsung Galaxy and other Android phones.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -38,6 +38,12 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Explore the Open World",
+      "short_name": "Explore World",
+      "url": "./?source=shortcut-explore",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
     {
       "name": "Race Voxel Valley",
       "short_name": "Start Race",

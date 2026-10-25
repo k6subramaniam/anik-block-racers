@@ -24,7 +24,7 @@ export function nearestObstacle(position, obstacles = []) {
   return closest
 }
 
-export function moveKart(state, input, delta, obstacles = []) {
+export function moveKart(state, input, delta, obstacles = [], options = {}) {
   const dt = Math.min(Math.max(0,delta), .05)
   if (!dt) return state
   let speed = state.speed
@@ -48,8 +48,9 @@ export function moveKart(state, input, delta, obstacles = []) {
   let event=null
   let collisions = state.collisions
 
-  const road = nearestRoad({x,z}, TRACK)
-  if (road.distance > SAFE_ROAD_HALF_WIDTH) {
+  const freeRoam=options.mode==='explore'
+  const road = freeRoam ? null : nearestRoad({x,z}, TRACK)
+  if (!freeRoam && road.distance > SAFE_ROAD_HALF_WIDTH) {
     const overshootX=x-road.x, overshootZ=z-road.z
     const inv=1/Math.max(road.distance,1e-6)
     x = road.x+overshootX*inv*SAFE_ROAD_HALF_WIDTH
@@ -59,6 +60,18 @@ export function moveKart(state, input, delta, obstacles = []) {
     collisions++
   }
 
+  // A bounded, driveable region keeps free roam safe without trapping the kart
+  // inside the old race barriers. The racetrack uses its original corridor.
+  if (freeRoam && options.bounds) {
+    const b=options.bounds
+    const clampedX=Math.max(b.minX,Math.min(b.maxX,x))
+    const clampedZ=Math.max(b.minZ,Math.min(b.maxZ,z))
+    if (clampedX !== x || clampedZ !== z) {
+      x=clampedX;z=clampedZ
+      speed=-Math.sign(speed)*Math.min(Math.abs(speed)*.14,2)
+      event='border';collisions++
+    }
+  }
   const obstacle = nearestObstacle({x,z},obstacles)
   if(obstacle){
     // Resolve the circle collision instead of allowing model interpenetration.
@@ -67,7 +80,7 @@ export function moveKart(state, input, delta, obstacles = []) {
     const safe=(obstacle.radius??1)+CAR_RADIUS+.03
     const candidate={x:obstacle.x+dx/len*safe,z:obstacle.z+dz/len*safe}
     // Never push a kart through the outside barriers while resolving an obstacle.
-    if(nearestRoad(candidate).distance<=SAFE_ROAD_HALF_WIDTH+.03){
+    if(freeRoam || nearestRoad(candidate).distance<=SAFE_ROAD_HALF_WIDTH+.03){
       x=candidate.x;z=candidate.z
     }else{
       x=state.x;z=state.z

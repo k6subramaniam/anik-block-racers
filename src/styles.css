@@ -195,3 +195,71 @@ button{touch-action:manipulation;cursor:pointer}
   .touch-btn.brake{height:58px;width:51px}
   .touch-btn.drift{height:54px;width:52px;font-size:11px}
 }
+
+/* v2: continuous open-world exploration and compact Galaxy map. */
+.intro-actions{display:flex;align-items:stretch;flex-wrap:wrap;gap:10px;max-width:620px}
+.intro-actions .primary-button{min-width:235px;flex:1}
+.intro-actions .intro-race-button{min-width:175px;min-height:55px;flex:0 1 auto}
+.explore-zone-card{width:188px}
+.explore-progress-number{font:800 44px/1 'Barlow Condensed',Impact,sans-serif;color:#c3fb80;margin-top:5px}
+.explore-progress-number span{font-size:19px;color:#a3afa7}
+.map-backdrop{position:absolute;inset:0;z-index:22;display:flex;align-items:center;justify-content:center;padding:max(13px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(13px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:rgba(3,13,17,.91);backdrop-filter:blur(9px);pointer-events:auto}
+.world-map-panel{background:linear-gradient(153deg,#162c32 0%,#0d1a1d 85%);border:1px solid rgba(176,243,170,.3);box-shadow:0 18px 65px #02080bc0;border-radius:15px;width:min(830px,100%);max-height:calc(100dvh - 26px);overflow:auto;color:#edf8ee;padding:19px 24px;overscroll-behavior:contain}
+.map-panel-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:10px;border-bottom:1px solid #ffffff25}
+.map-panel-header small{font:800 10px 'DM Sans',sans-serif;letter-spacing:1.7px;color:#a8e98b}
+.map-panel-header h2{margin:3px 0 0;font:900 36px/.9 'Barlow Condensed',Impact,sans-serif;letter-spacing:.5px}
+.map-panel-header button{min-height:37px;min-width:37px;background:#21383b;border:1px solid #77908f70;border-radius:9px;color:#f2fff2;display:grid;place-items:center}
+.map-layout{display:grid;grid-template-columns:1fr 1.17fr;gap:16px;padding:13px 0}
+.map-graphic{background:#101d21;border:1px solid #46615c;border-radius:10px;padding:9px;align-self:start}
+.map-graphic svg{width:100%;height:auto;max-height:255px}
+.map-graphic p{display:flex;align-items:center;gap:7px;color:#bcd4ca;font-size:10px;margin:4px 5px}
+.map-guide{font-size:11px;color:#b2c6c1;line-height:1.5;margin:0 0 8px}
+.map-destinations{display:flex;flex-direction:column;gap:6px}
+.map-place{display:flex;align-items:center;gap:10px;text-align:left;padding:8px 10px;border:1px solid #ffffff29;background:#ffffff0b;color:#eef9ee;border-radius:9px;min-height:47px}
+.map-place:focus-visible{outline:2px solid #b5f96b;outline-offset:2px}
+.map-place:hover{background:#b5fa6b1d;border-color:#b5fa6b9a}
+.map-place-icon{width:33px;height:33px;border:1px solid;border-radius:9px;display:grid;place-items:center;background:#101f29;font-size:21px;flex-shrink:0}
+.map-place>span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}
+.map-place b{font:900 17px 'Barlow Condensed',sans-serif;letter-spacing:.5px}
+.map-place small{font-size:9px;color:#a6bcb1}
+.map-place-status{display:flex;align-items:center;gap:6px;color:#bcf980;font-size:9px;font-weight:900;letter-spacing:.35px}
+.map-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid #ffffff21}
+.map-footer span{font-size:10px;letter-spacing:1px;font-weight:800;color:#b5d6bd}
+.map-footer button{min-height:36px;padding:7px 15px;font-size:11px;letter-spacing:1px;font-weight:900;color:#17271a;background:#b8f67c;border-radius:7px}
+@media(max-width:650px){.intro-actions{display:flex;flex-direction:column}.intro-actions .primary-button,.intro-actions .intro-race-button{min-height:44px;min-width:100%}.explore-zone-card{width:133px}.explore-progress-number{font-size:33px}.map-panel-header h2{font-size:29px}.world-map-panel{padding:12px}.map-graphic p{display:none}}
+@media(pointer:coarse) and (orientation:landscape){
+  .intro-actions{flex-direction:row;align-items:stretch;gap:7px;margin-top:1px}
+  .intro-actions .primary-button{min-height:42px;min-width:220px;flex:1;font-size:15px;padding:8px 13px}
+  .intro-actions .intro-race-button{min-height:42px;min-width:130px;flex:0 1 auto;padding:9px 11px;font-size:14px}
+  .explore-zone-card{width:143px}
+  .explore-progress-number{font-size:28px;line-height:1;margin-top:2px}
+  .map-backdrop{padding:8px max(9px,env(safe-area-inset-right)) 8px max(9px,env(safe-area-inset-left))}
+  .world-map-panel{max-width:760px;max-height:calc(100dvh - 16px);padding:9px 13px}
+  .map-panel-header{padding-bottom:6px}
+  .map-panel-header h2{font-size:25px}
+  .map-panel-header small{font-size:8px}
+  .map-layout{grid-template-columns:.8fr 1.2fr;gap:12px;padding:7px 0}
+  .map-graphic svg{max-height:185px}
+  .map-guide{font-size:9px;margin:0 0 4px}
+  .map-place{min-height:31px;padding:4px 7px;gap:6px}
+  .map-place-icon{width:23px;height:23px;font-size:13px}
+  .map-place b{font-size:13px}
+  .map-place small{display:none}
+  .map-place-status{font-size:8px}
+  .map-destinations{gap:3px}
+  .map-footer{padding-top:6px}
+  .map-footer span{font-size:8px}
+  .map-footer button{min-height:29px}
+}
+@media(pointer:coarse) and (orientation:portrait){
+  .top-buttons button:nth-child(3),.top-buttons button:nth-child(5){display:none}
+  .brand-wordmark strong{font-size:13px}
+  .map-layout{grid-template-columns:1fr;gap:9px}
+  .map-graphic{display:none}
+}
+@media(pointer:coarse) and (orientation:landscape) and (max-height:350px){
+  .intro-panel .mobile-intro-tip{display:none}
+  .intro-actions .primary-button,.intro-actions .intro-race-button{min-height:39px}
+  .map-panel-header h2{font-size:22px}
+  .map-graphic svg{max-height:160px}
+}

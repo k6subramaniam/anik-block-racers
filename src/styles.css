@@ -279,3 +279,26 @@ button{touch-action:manipulation;cursor:pointer}
 }
 @media (pointer:coarse) and (orientation:landscape) and (max-width:800px){.ai-smash-stat .smash-points{display:none}}
 @media (pointer:coarse) and (orientation:portrait){.ai-smash-stat .smash-points{display:none}}
+
+
+/* v2.2: pedestrian conversation cue occupies the gap between two thumb pads. */
+.villager-talk-button{position:absolute;left:50%;bottom:max(29px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:8px 17px 7px;min-width:173px;min-height:48px;max-width:min(250px,33vw);border-radius:10px;background:linear-gradient(180deg,rgba(57,85,57,.94),rgba(24,50,43,.96));color:#efffea;border:2px solid #b6f477;box-shadow:0 6px 20px #0008;font:900 13px 'Barlow Condensed',sans-serif;letter-spacing:.4px;pointer-events:auto;cursor:pointer;touch-action:manipulation}
+.villager-talk-button svg{position:absolute;left:9px;top:13px;width:14px;height:14px}
+.villager-talk-button span{white-space:nowrap}
+.villager-talk-button small{color:#e0f4b4;font:700 8px 'DM Sans',sans-serif;letter-spacing:.4px}
+.villager-talk-button:disabled{border-color:#8c9b8d;color:#ced9ce;background:rgba(27,46,42,.8)}
+.villager-talk-button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.event-toast.villager-chat{max-width:min(610px,80vw);min-width:255px;text-align:center;white-space:normal;padding:11px 17px}
+.event-toast.villager-chat small{font-size:12px;white-space:normal;line-height:1.35;max-height:4.3em;overflow:hidden}
+@media(pointer:coarse) and (orientation:landscape){
+ .villager-talk-button{bottom:max(11px,env(safe-area-inset-bottom));min-height:43px;padding:6px 17px;min-width:160px;max-width:28vw;font-size:12px}
+ .villager-talk-button svg{display:none}
+ .villager-talk-button small{font-size:7px}
+ .event-toast.villager-chat{top:18%;max-width:60vw;padding:8px 14px}
+ .event-toast.villager-chat strong{font-size:24px}
+ .event-toast.villager-chat small{font-size:10px}
+}
+@media(pointer:coarse) and (orientation:landscape) and (max-width:740px){
+ .villager-talk-button{max-width:30vw;min-width:130px;bottom:max(4px,env(safe-area-inset-bottom));padding:4px 6px;font-size:10px}
+ .villager-talk-button small{display:none}
+}

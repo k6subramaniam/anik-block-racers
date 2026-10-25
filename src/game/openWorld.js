@@ -13,13 +13,14 @@ export const ZONES = Object.freeze([
   {id:'canyon',name:'SUNSET CANYON',label:'Temple and stone mesas',icon:'▲',color:'#ffc176',x:-107,z:79,radius:30,spawn:{x:-105,z:78,yaw:Math.PI/2}},
   {id:'ember',name:'EMBER PEAKS',label:'Lava volcano and dragon',icon:'♨',color:'#ff7452',x:104,z:78,radius:30,spawn:{x:102,z:76,yaw:-Math.PI/2}},
   {id:'grove',name:'PORTAL GROVE',label:'Ancient jump portal',icon:'◎',color:'#b4ff8b',x:0,z:-106,radius:24,spawn:{x:0,z:-91,yaw:0}},
+  {id:'village',name:'BLOCKHAVEN VILLAGE',label:'Walking villagers, farms and market',icon:'⌂',color:'#f8d67a',x:-63,z:0,radius:32,spawn:{x:-63,z:-33,yaw:Math.PI}},
 ])
 
 // Navigable, individually collectible artifacts, at accessible ground-level positions.
 export const RELICS = Object.freeze(ZONES.map(zone=>({
   id:'relic-'+zone.id,
-  x:zone.id==='grove'?0:zone.x,
-  z:zone.id==='grove'?-94:zone.z,
+  x:zone.id==='grove'?0:zone.id==='village'?-63:zone.x,
+  z:zone.id==='grove'?-94:zone.id==='village'?-2:zone.z,
   zoneId:zone.id,color:zone.color,
 })))
 
@@ -39,6 +40,13 @@ export const LANDMARK_OBSTACLES = Object.freeze([
   {id:'ember-dragon',x:90,z:107,radius:6},
   {id:'portal-column-left',x:-7,z:-106,radius:1.9},
   {id:'portal-column-right',x:7,z:-106,radius:1.9},
+  // Blockhaven's four houses, forge, well, market stalls and mill use
+  // simple cylindrical hit volumes for fast Galaxy-friendly collision tests.
+  ...[[-84,19],[-42,18],[-84,-18],[-42,-18]].map(([x,z],i)=>({id:'village-house-'+i,x,z,radius:7.25})),
+  {id:'blockhaven-forge',x:-94,z:0,radius:4.3},
+  {id:'blockhaven-well',x:-62,z:9,radius:3.1},
+  ...[[-69.5,-31],[-52.5,-31]].map(([x,z],i)=>({id:'market-stall-'+i,x,z,radius:3.2})),
+  {id:'blockhaven-windmill',x:-116,z:-23,radius:4.7},
 ])
 
 export function zoneAt(pos) {
@@ -64,7 +72,7 @@ export function initialExploreState(){
   return {
     ...EXPLORE_SPAWN,speed:0,elapsed:0,lap:1,checkpoint:0,bestLap:null,lastLapStart:0,
     collisions:0,event:null,coins:0,boostTimer:0,boostCooldown:0,
-    collected:[],visited:[],zoneName:'VOXEL WILDS',portalCooldown:0,
+    collected:[],visited:[],metVillagers:[],zoneName:'VOXEL WILDS',portalCooldown:0,
   }
 }
 

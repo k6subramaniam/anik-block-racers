@@ -9,8 +9,10 @@ import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } f
 import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
 import {makeNpcs, advanceNpcs, applyRamming} from './npcAI.js'
 import NpcActors from './NpcActors.jsx'
+import VoxelVillagers from './VoxelVillagers.jsx'
+import {makeVillagers,advanceVillagers,nearbyVillager,talkToVillager} from './villagerAI.js'
 
-const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/0e25123b-02d4-42d1-bc43-5e507f5f3998.glb'
+const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
 const boostLocations = [28,70,105,143].map(index => ({index, ...TRACK[index]}))
 const coinLocations = [12,21,34,42,57,64,81,93,116,123,133,151].map(index => ({index, ...TRACK[index]}))
@@ -30,7 +32,7 @@ function makeGameAssets(scene) {
   track.updateMatrixWorld(true)
   track.traverse(child => {
     if (child.name === 'PREFAB_kart_emerald' || child.name === 'PREFAB_kart_amber' || child.isCamera || child.isLight) child.visible = false
-    if (child.type === 'Object3D' && child.name.startsWith('OW_HERO_') && child.children.length) cullRoots.push(child)
+    if (child.type === 'Object3D' && (child.name.startsWith('OW_HERO_') || child.name.startsWith('OW_PROP_BLOCKHAVEN_') || child.name.startsWith('OW_PROP_VILLAGE_') || child.name.startsWith('OW_PROP_MARKET_')) && child.children.length) cullRoots.push(child)
     if (child.isMesh) {
       child.receiveShadow = child.name.startsWith('TRACK_') || child.name.startsWith('ENV_')
       child.castShadow = child.name.startsWith('CASTLE_') || child.name.includes('crown') || child.name.includes('hood')
@@ -71,7 +73,7 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
   const rigid = useRef(null)
   const race = playerRef
   const elapsedHudRefresh = useRef(0)
@@ -85,6 +87,7 @@ function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpR
     const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
     npcRef.current=makeNpcs(mode)
+    villagerRef.current=makeVillagers()
     elapsedHudRefresh.current = 0
     lastCoinTick.current = new Map()
     cameraTarget.current.set(fresh.x,1.1,fresh.z)
@@ -111,6 +114,20 @@ function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpR
     onEvent('travel',fresh)
   },[mode,warpRequest,setHud,onEvent])
 
+  useEffect(()=>{
+    if(!talkRequest || mode!=='explore' || phase!=='exploring')return
+    const friend=nearbyVillager(villagerRef.current,race.current,4.25)
+    if(!friend)return
+    if(Math.abs(race.current.speed)>4.5){
+      onEvent('villager-slow',{...race.current,villagerName:friend.name})
+      return
+    }
+    const spoken=talkToVillager(race.current,friend)
+    race.current=spoken.state
+    setHud(old=>({...old,coins:spoken.state.coins,metVillagers:spoken.state.metVillagers,nearbyVillager:{name:friend.name,role:friend.role}}))
+    onEvent('villager-chat',{...spoken.state,villagerName:friend.name,villagerLine:spoken.dialogue?.line,firstMeeting:spoken.firstMeeting})
+  },[talkRequest,mode,phase,villagerRef,setHud,onEvent,race])
+
   useFrame((_,rawDt) => {
     // Catch up on elapsed wall time in safe 50 ms simulation substeps. This also
     // keeps races responsive on phones or software-rendered WebGL devices.
@@ -130,6 +147,7 @@ function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpR
         // AI updates and player-initiated rams share this deterministic frame step.
         // This avoids game/visual desync, repetitive hit damage and teleport hits.
         const moving=advanceNpcs(npcRef.current,dt,next,mode)
+        if(mode==='explore')villagerRef.current=advanceVillagers(villagerRef.current,dt,next)
         const impact=applyRamming(next,moving,dt)
         npcRef.current=impact.npcs
         if(impact.event){
@@ -222,6 +240,8 @@ function Racer({ kart, objects, cullRoots, npcRef, playerRef, phase, mode, warpR
         wildlifeActive:npcRef.current.filter(n=>n.kind==='animal'&&n.health>0).length,
         zoneName:next.zoneName||'VOXEL VALLEY',
         visited:next.visited||[],collected:next.collected||[],
+        metVillagers:next.metVillagers||[],
+        nearbyVillager:mode==='explore'?(()=>{const person=nearbyVillager(villagerRef.current,next);return person?{name:person.name,role:person.role}:null})():null,
       })
     }
   })
@@ -240,6 +260,7 @@ function LoadedLevel(props){
   const {track,kart,objects,cullRoots}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
   const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES]:objects,[props.mode,objects])
   const npcRef=useRef(makeNpcs(props.mode))
+  const villagerRef=useRef(makeVillagers())
   const playerRef=useRef(initialRaceState())
   // Only the High preset renders real-time shadow maps on mobile GPUs.
   useEffect(()=>{
@@ -251,10 +272,11 @@ function LoadedLevel(props){
     <primitive object={track} />
     <OpenWorldDecor />
     <NpcActors key={props.mode} npcRef={npcRef} playerRef={playerRef} kartSource={kart} mode={props.mode} />
+    {props.mode==='explore' && <VoxelVillagers villagerRef={villagerRef} playerRef={playerRef} mode={props.mode} phase={props.phase} />}
     {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
     <Physics gravity={[0,0,0]} timeStep={1/60} colliders={false} interpolation={false}>
       <StaticColliders objects={objects} mode={props.mode} />
-      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} npcRef={npcRef} playerRef={playerRef} />
+      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} npcRef={npcRef} villagerRef={villagerRef} playerRef={playerRef} />
     </Physics>
   </>
 }

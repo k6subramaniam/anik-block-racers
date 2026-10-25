@@ -26,8 +26,8 @@ const cacheVersion = fingerprint.digest('hex').slice(0, 12)
 const worker = `/* ANIK Block Racers Samsung Galaxy Edition: PWA offline worker */
 const CACHE_PREFIX = 'anik-block-racers-';
 const SHELL = CACHE_PREFIX + 'shell-${cacheVersion}';
-const GAME_ASSETS = CACHE_PREFIX + 'model-v3';
-const MODEL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/0e25123b-02d4-42d1-bc43-5e507f5f3998.glb';
+const GAME_ASSETS = CACHE_PREFIX + 'model-v4';
+const MODEL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb';
 const BASE = new URL(self.registration.scope).pathname;
 const PRECACHE = ${JSON.stringify(files, null, 2)}.map(path => BASE + path.slice(1));
 self.addEventListener('install', event => {

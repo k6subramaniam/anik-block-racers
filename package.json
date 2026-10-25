@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
-  "description": "Open-world Galaxy racer with 3 AI rivals, 8 voxel wildlife bots, ramming damage and offline-capable PWA",
+  "description": "Samsung 3D voxel racing game with six biomes, walking AI villagers, block town assets and kart/animal bots",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

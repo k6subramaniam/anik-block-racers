@@ -72,3 +72,13 @@ This is a **bounded** open-world prototype, not an infinite Minecraft map. Terra
 **How to play:** Start **RACE 3 LAPS** to compete against rival karts, or **EXPLORE OPEN WORLD** to encounter the animals and roaming karts. Accelerate, aim your kart toward an NPC and crash into it at speed; avoid slow side-swipes. The orange AI health bar diminishes with impacts; the bot bursts into cubes when health is depleted. The top-right **BOTS SMASHED** indicator tracks knockouts. There are no weapons and no realistic gore.
 
 **QA:** Run `npm test` for the deterministically simulated NPC behavior and ramming mechanics, or inspect the GitHub Actions build for the compiled mobile web app. Physical Samsung frame rate and battery impact still require real-device validation.
+
+
+## v2.2 — Blockhaven living village (original voxel art)
+
+- Higgsfield scene expanded with timber-frame houses, windmill, wheat fields, pond and bridge, cobblestone paths, market, glow lamps, forge, well and square oaks.
+- Twelve friendly humanoid AI villagers walk waypoint paths, pause, animate walking limbs and move away from approaching vehicles. Movement is local rule-based AI, not a remote model.
+- In free roam, fast travel to **Blockhaven Village**, slow down near a character and tap **TALK** (keyboard: **T**) to hear their tips. The first meeting with each character earns two bonus coins.
+- There are now six discovery districts and six relics. Three-lap race mode, AI rival karts, voxel animal bots, ramming effects and Samsung PWA controls remain.
+- Villagers are friendly and invulnerable; only the fantasy kart and creature bots use the arcade knockout system.
+- This is an original block-world game and is not officially affiliated with Minecraft or Mojang.

@@ -4,10 +4,10 @@ import {advanceExplore,clampWorld,EXPLORE_SPAWN,fastTravel,initialExploreState,L
 import {initialRaceState,moveKart} from '../game/simulation.js'
 import {nearestRoad} from '../game/track.js'
 
-test('open world has five varied destinations and unique collectible relics',()=>{
- assert.equal(ZONES.length,5)
- assert.equal(RELICS.length,5)
- assert.equal(new Set(ZONES.map(x=>x.id)).size,5)
+test('open world has six varied destinations and unique collectible relics',()=>{
+ assert.equal(ZONES.length,6)
+ assert.equal(RELICS.length,6)
+ assert.equal(new Set(ZONES.map(x=>x.id)).size,6)
  assert.ok(ZONES.every(x=>x.spawn && x.name && x.radius>=20))
 })
 test('exploration spawns OFF the racetrack',()=>{
@@ -52,7 +52,7 @@ test('approaching zones registers discovery only once',()=>{
  assert.equal(r.visited.length,1)
  assert.notEqual(r.event,'discovery')
 })
-test('five relics each grant one-time bonuses with no double award',()=>{
+test('six relics each grant one-time bonuses with no double award',()=>{
  let s={...initialExploreState(),x:-107,z:79}
  s=advanceExplore(s,{},.05)
  assert.ok(s.collected.includes('relic-canyon'))

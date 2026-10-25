@@ -13,7 +13,7 @@ export const ZONES = Object.freeze([
   {id:'canyon',name:'SUNSET CANYON',label:'Temple and stone mesas',icon:'▲',color:'#ffc176',x:-107,z:79,radius:30,spawn:{x:-105,z:78,yaw:Math.PI/2}},
   {id:'ember',name:'EMBER PEAKS',label:'Lava volcano and dragon',icon:'♨',color:'#ff7452',x:104,z:78,radius:30,spawn:{x:102,z:76,yaw:-Math.PI/2}},
   {id:'grove',name:'PORTAL GROVE',label:'Ancient jump portal',icon:'◎',color:'#b4ff8b',x:0,z:-106,radius:24,spawn:{x:0,z:-91,yaw:0}},
-  {id:'village',name:'BLOCKHAVEN VILLAGE',label:'Walking villagers, farms and market',icon:'⌂',color:'#f8d67a',x:-63,z:0,radius:32,spawn:{x:-63,z:-33,yaw:Math.PI}},
+  {id:'village',name:'BLOCKHAVEN VILLAGE',label:'Walking villagers, farms and market',icon:'⌂',color:'#f8d67a',x:-63,z:0,radius:32,spawn:{x:-63,z:-28,yaw:Math.PI}},
 ])
 
 // Navigable, individually collectible artifacts, at accessible ground-level positions.

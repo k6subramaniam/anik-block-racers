@@ -138,12 +138,15 @@ export function applyRamming(player,npcs,dt=0.016) {
     const nvx=-Math.sin(n.yaw)*(n.kind==='racer'&&n.stun<=0?n.speed:0)
     const nvz=-Math.cos(n.yaw)*(n.kind==='racer'&&n.stun<=0?n.speed:0)
     const closing=(pvx-nvx)*ux+(pvz-nvz)*uz
-    const canHit=(nextPlayer.speed>7 && closing>=5 && n.hitCooldown<=0)
+    // Catch-up crashes into moving rival karts should still hurt them even
+    // when both racers travel in the same direction at similar speeds.
+    const minimumClosing=n.kind==='racer'?2.25:5
+    const canHit=(nextPlayer.speed>7 && closing>=minimumClosing && n.hitCooldown<=0)
     const correction=Math.min(1.1,Math.max(0,contact-distance+.06))
     const trial={...nextPlayer,x:nextPlayer.x-ux*correction,z:nextPlayer.z-uz*correction}
     nextPlayer={...trial,speed:nextPlayer.speed*(canHit?.52:.86)}
     if(!canHit){cars.push(n);continue}
-    const damage=Math.max(12,Math.min(100,Math.round((closing-2)*(n.kind==='animal'?5.5:3.8))))
+    const damage=Math.max(16,Math.min(105,Math.round(16+(closing-2)*(n.kind==='animal'?6.2:5.5))))
     const health=Math.max(0,n.health-damage)
     const destroyed=health===0
     cars.push({...n,health,hitCooldown:1.1,stun:destroyed?0:.36,

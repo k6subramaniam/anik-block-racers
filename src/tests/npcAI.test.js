@@ -83,3 +83,12 @@ test('no NaN or runaway coordinates after long open-world AI patrol',()=>{
   for(let i=0;i<12000;i++)n=advanceNpcs(n,.05,{x:i%200-100,z:0},'explore')
   assert.ok(n.every(a=>Number.isFinite(a.x)&&Math.abs(a.x)<150&&Number.isFinite(a.z)&&Math.abs(a.z)<130))
 })
+
+test('overtaking and rear-ending a moving AI rival damages the kart',()=>{
+  const rival={...makeNpcs('race')[0],x:0,z:-1.5,yaw:0,speed:19,stun:0}
+  const driver={x:0,z:0,yaw:0,speed:23}
+  const hit=applyRamming(driver,[rival])
+  assert.equal(hit.event.kind,'npc-hit')
+  assert.ok(hit.event.damage>=17)
+  assert.ok(hit.npcs[0].health<rival.health)
+})

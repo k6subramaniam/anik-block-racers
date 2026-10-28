@@ -15,6 +15,8 @@ import {environmentAt} from './environment.js'
 import {SkyAndWeather,WaterWorld,WeatherParticles} from './WorldAtmosphere.jsx'
 import {VoxelLandscape,VoxelSky,voxelizeSceneMaterials} from './VoxelVisuals.jsx'
 import {VOXEL_TREE_COLLIDERS} from './voxelStyle.js'
+import FrontierWorld from './FrontierWorld.jsx'
+import {buildObstacleIndex, nearbyObstacles} from './frontier.js'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
@@ -23,8 +25,6 @@ const coinLocations = [12,21,34,42,57,64,81,93,116,123,133,151].map(index => ({i
 
 function makeGameAssets(scene) {
   const track = scene.clone(true)
-  // The Higgsfield level includes kart prefabs in the editor; race mode draws
-  // a separate playable clone so the parked display models do not double up.
   const kartSource = scene.getObjectByName('PREFAB_kart_emerald')
   if (!kartSource) throw new Error('The Higgsfield GLB is missing PREFAB_kart_emerald.')
   const kart = kartSource.clone(true)
@@ -40,7 +40,6 @@ function makeGameAssets(scene) {
     if (child.isMesh) {
       child.receiveShadow = child.name.startsWith('TRACK_') || child.name.startsWith('ENV_')
       child.castShadow = child.name.startsWith('CASTLE_') || child.name.includes('crown') || child.name.includes('hood')
-      // Imported mesh geometries already contain their intended material colors.
       child.frustumCulled = true
     }
     if (child.type === 'Object3D' && (child.name.startsWith('PREFAB_voxel_pine_') || child.name.startsWith('PREFAB_stone_boulder_') || child.name === 'PREFAB_central_castle')) {
@@ -55,7 +54,6 @@ function makeGameAssets(scene) {
 
 function StaticColliders({ objects, mode }) {
   return <>
-    {/* Invisible fixed Rapier volumes correspond to the visible Higgsfield curbs. */}
     {mode==='race' && walls.map(w => <CuboidCollider key={w.id} position={[w.x,.56,w.z]} rotation={[0,w.yaw,0]} args={[w.length/2,.65,.19]} />)}
     {objects.map(o => <CuboidCollider key={o.id} position={[o.x,.8,o.z]} args={[o.radius,.8,o.radius]} />)}
   </>
@@ -71,14 +69,11 @@ function TrackFx({ vehicleRef, phase }) {
     ring.current.visible = (phase==='racing'||phase==='exploring') && (v.boostTimer||0)>0
   })
   return <group ref={ring} rotation={[-Math.PI/2,0,0]} position={[0,.36,0]} visible={false}>
-    <mesh>
-      <torusGeometry args={[1.12,.045,8,48]} />
-      <meshBasicMaterial color="#baff43" transparent opacity={.62} />
-    </mesh>
+    <mesh><torusGeometry args={[1.12,.045,8,48]} /><meshBasicMaterial color="#baff43" transparent opacity={.62} /></mesh>
   </group>
 }
 
-function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
   const rigid = useRef(null)
   const race = playerRef
   const elapsedHudRefresh = useRef(0)
@@ -136,8 +131,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
   },[talkRequest,mode,phase,villagerRef,setHud,onEvent,race])
 
   useFrame((_,rawDt) => {
-    // Catch up on elapsed wall time in safe 50 ms simulation substeps. This also
-    // keeps races responsive on phones or software-rendered WebGL devices.
     const frameDt=Math.min(Math.max(rawDt,0),.30)
     const smoothDt=Math.min(frameDt,.05)
     let next=race.current
@@ -149,10 +142,8 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
         remaining-=dt
         const old=next
         next=mode==='explore'
-          ? advanceExplore(old,inputRef.current,dt,objects,weatherClockRef.current)
+          ? advanceExplore(old,inputRef.current,dt,nearbyObstacles(obstacleIndex,old),weatherClockRef.current)
           : advanceKart(old,inputRef.current,dt,objects,weatherClockRef.current)
-        // AI updates and player-initiated rams share this deterministic frame step.
-        // This avoids game/visual desync, repetitive hit damage and teleport hits.
         const moving=advanceNpcs(npcRef.current,dt,next,mode)
         if(mode==='explore')villagerRef.current=advanceVillagers(villagerRef.current,dt,next)
         const impact=applyRamming(next,moving,dt)
@@ -166,7 +157,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
             smashScore:(old.smashScore||0)+impact.points}
           frameEvent=impact.event.kind
         }
-
         next.boostTimer=Math.max(0,(old.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)
         for(const pad of boostLocations){
@@ -186,13 +176,8 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
         next.coins=coins
         if(next.event){
           if(next.event==='wall' || next.event==='obstacle'||next.event==='border'){
-            if(next.elapsed-lastCollisionToast.current>.9){
-              lastCollisionToast.current=next.elapsed
-              frameEvent=next.event
-            }
-          }else{
-            frameEvent=next.event
-          }
+            if(next.elapsed-lastCollisionToast.current>.9){lastCollisionToast.current=next.elapsed;frameEvent=next.event}
+          }else frameEvent=next.event
           if(next.event==='finished')break
         }
       }
@@ -204,8 +189,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
       }
       if(mode==='race' && next.event==='finished') onPhase('finished')
     }
-    // Coarse frustum-distance gating: distant hero districts don't cost phone
-    // GPU draw calls when they are hundreds of metres from the camera.
     if(cullRoots && (nextCull.current-=frameDt)<=0){
       nextCull.current=.35
       for(const root of cullRoots){
@@ -217,8 +200,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
       rigid.current.setNextKinematicTranslation({x:next.x,y:-1.55*(next.submersion||0),z:next.z})
       rigid.current.setNextKinematicRotation({x:0,y:Math.sin(next.yaw/2),z:0,w:Math.cos(next.yaw/2)})
     }
-
-    // The camera follows vehicle orientation, never a fixed world-axis or flat 2D projection.
     const front=new THREE.Vector3(-Math.sin(next.yaw),0,-Math.cos(next.yaw))
     const target=new THREE.Vector3(next.x,1.45-.47*(next.submersion||0),next.z)
     const cameraLerp=1-Math.exp(-5*smoothDt)
@@ -236,7 +217,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
     camera.lookAt(cameraTarget.current)
     const desiredFov=cameraMode==='aerial'?48:Math.min(68,54+Math.abs(next.speed)*.45)
     if(Math.abs(camera.fov-desiredFov)>.12){camera.fov=THREE.MathUtils.lerp(camera.fov,desiredFov,cameraLerp);camera.updateProjectionMatrix()}
-
     elapsedHudRefresh.current+=frameDt
     if(elapsedHudRefresh.current>.105 || frameEvent){
       elapsedHudRefresh.current=0
@@ -261,7 +241,6 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
       })
     }
   })
-
   return <>
     <RigidBody ref={rigid} type="kinematicPosition" colliders={false} position={[SPAWN.x,0,SPAWN.z]} rotation={[0,SPAWN.yaw,0]} ccd canSleep={false}>
       <CuboidCollider args={[.75,.46,1.2]} position={[0,.65,0]} friction={.8} restitution={.15} />
@@ -276,10 +255,10 @@ function LoadedLevel(props){
   const {track,kart,objects,cullRoots,voxelStyle}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
   useEffect(()=>()=>voxelStyle.dispose(),[voxelStyle])
   const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES,...VOXEL_TREE_COLLIDERS]:objects,[props.mode,objects])
+  const obstacleIndex=useMemo(()=>buildObstacleIndex(collidable),[collidable])
   const npcRef=useRef(makeNpcs(props.mode))
   const villagerRef=useRef(makeVillagers())
   const playerRef=props.environmentPlayerRef
-  // Only the High preset renders real-time shadow maps on mobile GPUs.
   useEffect(()=>{
     track.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows && (child.name.startsWith('CASTLE_')||child.name.includes('crown')||child.name.includes('hood'))})
     kart.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows})
@@ -289,13 +268,14 @@ function LoadedLevel(props){
     <primitive object={track} />
     <VoxelLandscape budget={props.budget} />
     <OpenWorldDecor />
+    <FrontierWorld playerRef={playerRef} budget={props.budget}/>
     <WaterWorld clockRef={props.weatherClockRef} playerRef={playerRef} phase={props.phase} mode={props.mode}/>
     <NpcActors key={props.mode} npcRef={npcRef} playerRef={playerRef} kartSource={kart} mode={props.mode} />
     {props.mode==='explore' && <VoxelVillagers villagerRef={villagerRef} playerRef={playerRef} mode={props.mode} phase={props.phase} />}
     {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
     <Physics gravity={[0,0,0]} timeStep={1/60} colliders={false} interpolation={false}>
       <StaticColliders objects={objects} mode={props.mode} />
-      <Racer {...props} kart={kart} objects={collidable} cullRoots={cullRoots} npcRef={npcRef} villagerRef={villagerRef} playerRef={playerRef} />
+      <Racer {...props} kart={kart} objects={collidable} obstacleIndex={obstacleIndex} cullRoots={cullRoots} npcRef={npcRef} villagerRef={villagerRef} playerRef={playerRef} />
     </Physics>
   </>
 }
@@ -307,7 +287,7 @@ export default function RacingScene(props){
   const setHud=props.setHud
   const weatherPreviewHud=React.useCallback(env=>setHud(old=>({...old,worldTime:env.time,weather:env.label,daylight:env.daylight,windSpeed:env.windSpeed})),[setHud])
   return <Canvas className="game-canvas" shadows={budget.shadows} dpr={budget.dpr}
-    camera={{position:[10,9,29],fov:54,near:.1,far:420}}
+    camera={{position:[10,9,29],fov:54,near:.1,far:720}}
     gl={{alpha:false,antialias:budget.antialias,powerPreference:'high-performance',stencil:false}}>
     <color attach="background" args={['#adcee1']} />
     <fog attach="fog" args={['#adcee1',135,230]} />
@@ -319,5 +299,4 @@ export default function RacingScene(props){
     </React.Suspense>
   </Canvas>
 }
-
 useGLTF.preload(MODEL_URL)

@@ -1,10 +1,10 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,ArrowRight,ArrowUp,ArrowDown,Play,Pause,RotateCcw,Share2,Download,Trophy,X,Camera,Settings2,Flame,Film,Flag,Calendar,Shuffle,Copy,Check,ExternalLink} from 'lucide-react'
+import {ArrowLeft,ArrowRight,ArrowUp,ArrowDown,Play,Pause,RotateCcw,Share2,Download,Trophy,X,Camera,Settings2,Film,Flag,Calendar,Shuffle,Check} from 'lucide-react'
 import ShowdownScene from './Scene.jsx'
 import {initialShowdown,makeArena,dailyChallenge,newChallenge,challengeTitle,makeChallengeUrl,resultFor} from './rules.js'
 import {createReplay,recordReplay,bestMoment} from './replay.js'
-import {browserStorage,localScores,saveResult,statsConsent,setStatsConsent,trackEvent,localStats,clearScores} from './storage.js'
-import {shareChallenge,shareFile,makeScoreCard,beginClip,supportedVideoType,saveBlob} from './share.js'
+import {localScores,saveResult,statsConsent,setStatsConsent,trackEvent,localStats,clearScores} from './storage.js'
+import {shareChallenge,shareFile,makeScoreCard,beginClip,saveBlob} from './share.js'
 import {getRenderBudget,isCoarsePointer,safeStoredQuality} from '../game/mobile.js'
 
 const EMPTY={forward:false,backward:false,left:false,right:false,drift:false}
@@ -92,7 +92,7 @@ export default function ShowdownGame({invitation,onExit}){
   },[ready,code,stopReplay])
   const controls=useControls(inputRef,{start,pause,blur,camera:()=>setCamera(c=>c==='chase'?'aerial':'chase')})
   clearControls.current=controls.reset
-  useEffect(()=>{trackEvent(invitation.invited?'challenge_open':'lobby_open',{code})},[]) // One landing event, not per render.
+  useEffect(()=>{trackEvent(invitation.invited?'challenge_open':'lobby_open',{code})},[])
   useEffect(()=>()=>{clearTimeout(messageTimer.current);captureRef.current?.cancel()},[])
   useEffect(()=>{
     if(phase!=='countdown')return
@@ -148,7 +148,7 @@ export default function ShowdownGame({invitation,onExit}){
       }catch(error){notice(error.message);setPhase('results')}
     }else{trackEvent('replay_watch',{code});setPhase('replay')}
   }
-  const changeChallenge=(next)=>{
+  const changeChallenge=next=>{
     controls.reset();stopReplay();setCode(next);setTarget(null);setPhase('lobby');setResult(null);setClip(null);setCard(null);setMessage('');setManualLink('')
     engineRef.current=engineFor(next)
     const url=new URL(location.href);url.search='';url.searchParams.set('challenge',next);history.replaceState({},'',url)
@@ -178,16 +178,15 @@ export default function ShowdownGame({invitation,onExit}){
     controls.reset();if(phaseRef.current==='running')setPhase('paused')
     if(name==='board')setBoard(true);else setSettings(true)
   }
-  const scores=board?localScores(code):[]
-  const stats=board?localStats():null
+  const scores=board?localScores(code):[],stats=board?localStats():null
   const replaying=phase==='replay'||phase==='exporting'
   const event=hud.notice&&performance.now()-hud.notice.at<1400?hud.notice:null
   const title=event?.kind==='smash'?'BOT SMASHED':event?.kind==='land'?'BIG AIR LANDED':event?.kind==='jump'?'SEND IT!':event?.kind==='boost'?'TURBO!':event?'DIRECT HIT':''
-  return <div className={`showdown phase-${phase}`} data-testid="showdown-game">
+  return <div className={`showdown phase-${phase}`} data-testid="showdown-game" data-arena-width={arena.bounds.maxX-arena.bounds.minX} data-bots={arena.bots.length}>
     <div className="sd-world"><SceneBoundary><ShowdownScene engineRef={engineRef} inputRef={inputRef} phase={phase} arena={arena} budget={budget} onReady={setReady} onHud={setHud} onFinish={finish} onReplayEnd={replayEnd} cameraMode={camera}/></SceneBoundary></div>
     <header className="sd-top">
       <button className="sd-brand" onClick={leave} aria-label="Return to original race and open world"><span>A</span><b>ANIK <small>BOT SMASH</small></b></button>
-      <div className="sd-challenge-label">{challengeTitle(code)}</div>
+      <div className="sd-challenge-label">{challengeTitle(code)} · {arena.rulesVersion===1?'CLASSIC':'XL ARENA'}</div>
       <nav>
         <button onClick={()=>openPanel('board')} aria-label="Local leaderboard" data-testid="sd-board"><Trophy/></button>
         <button onClick={()=>setCamera(c=>c==='chase'?'aerial':'chase')} aria-label="Change camera"><Camera/></button>
@@ -210,12 +209,12 @@ export default function ShowdownGame({invitation,onExit}){
       <div><Pedal action="drift" label="Drift" controls={controls} className="drift">DRIFT</Pedal><Pedal action="backward" label="Brake or reverse" controls={controls}><ArrowDown/></Pedal><Pedal action="forward" label="Accelerate" controls={controls} className="gas"><ArrowUp/><small>GAS</small></Pedal></div>
     </div>}
     {phase==='lobby'&&<div className="sd-lobby-wrap"><section className="sd-lobby">
-      <div className="sd-eyebrow"><span/> NEW MODE · ONE MINUTE OF MAYHEM</div>
+      <div className="sd-eyebrow"><span/> {arena.rulesVersion===1?'CLASSIC CHALLENGE · ORIGINAL ARENA':'BIGGER ARENA · 4× PLAYABLE AREA'}</div>
       <h1>BOT SMASH<br/><em>SHOWDOWN.</em></h1>
-      <p>Ram 10 robots. Launch off giant ramps. Stack a 5× combo. Then dare a friend to beat your score.</p>
+      <p>Ram {arena.bots.length} robots across a {arena.bounds.maxX-arena.bounds.minX} × {arena.bounds.maxZ-arena.bounds.minZ} metre arena. Hit {arena.ramps.length} ramps. Stack a 5× combo. Then dare a friend to beat your score.</p>
       {invitation.invalid&&<p className="sd-warning">That challenge link is invalid. Today's daily arena is loaded instead.</p>}
       {target!==null&&<div className="sd-invite" data-testid="sd-invite"><b>BEAT {target.toLocaleString()} POINTS</b><small>Same arena seed. Shared score is not server verified.</small></div>}
-      <div className="sd-mode-tabs"><button className={code.startsWith('sd1-d')?'selected':''} onClick={()=>changeChallenge(dailyChallenge())} data-testid="sd-daily"><Calendar size={16}/> DAILY</button><button onClick={()=>changeChallenge(newChallenge(crypto.getRandomValues(new Uint32Array(1))[0]))} data-testid="sd-remix"><Shuffle size={16}/> NEW CHALLENGE</button></div>
+      <div className="sd-mode-tabs"><button className={/^sd[12]-d/.test(code)?'selected':''} onClick={()=>changeChallenge(dailyChallenge())} data-testid="sd-daily"><Calendar size={16}/> DAILY</button><button onClick={()=>changeChallenge(newChallenge(crypto.getRandomValues(new Uint32Array(1))[0]))} data-testid="sd-remix"><Shuffle size={16}/> NEW CHALLENGE</button></div>
       <button className="sd-primary" onClick={start} disabled={!ready} data-testid="sd-start"><Play size={18} fill="currentColor"/>{ready?'PLAY · 60 SECONDS':'LOADING 3D ARENA…'}<span>↗</span></button>
       <div className="sd-lobby-bottom"><button onClick={leave}><Flag size={15}/> RACE & EXPLORE</button><button onClick={()=>openPanel('board')}><Trophy size={15}/> MY HIGH SCORES</button></div>
       <small className="sd-hint">WASD / arrows to drive · Space to drift · Or use two-thumb controls. No sign-in.</small>

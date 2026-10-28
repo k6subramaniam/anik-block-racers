@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { environmentAt, nextNightTime, nextWeatherTime } from './environment.js'
 import { WATER_BODIES } from './water.js'
+import {frontierBudget} from './frontier.js'
 
 const rainVertex=new THREE.Color('#6bbcd2')
 const clearSky=new THREE.Color('#a9d0e6')
@@ -11,9 +12,6 @@ const nightSky=new THREE.Color('#09172c')
 const fogShade=new THREE.Color()
 const skyShade=new THREE.Color()
 
-/** Each scene owns its own simulation clock. The weather and the lighting are
- * synchronized without re-rendering the React tree every animation frame.
- */
 export function SkyAndWeather({clockRef,phase,previewRequest,budget,onWeatherPreview}){
   const {scene}=useThree()
   const sun=useRef(),moon=useRef(),ambient=useRef(),hemi=useRef()
@@ -38,8 +36,8 @@ export function SkyAndWeather({clockRef,phase,previewRequest,budget,onWeatherPre
       fogShade.copy(skyShade).lerp(rainVertex,(env.rain+env.snow)*.09)
       scene.fog.color.copy(fogShade)
       const visibility=Math.max(0,1-env.rain*.4-env.snow*.46)
-      scene.fog.near=45+85*visibility
-      scene.fog.far=100+145*visibility
+      scene.fog.near=55+85*visibility
+      scene.fog.far=120+(frontierBudget(budget?.tier).fogFar-120)*visibility
     }
     if(sun.current){
       sun.current.position.set(25*Math.cos(env.sunAngle),9+45*Math.sin(env.sunAngle),25)
@@ -57,7 +55,6 @@ export function SkyAndWeather({clockRef,phase,previewRequest,budget,onWeatherPre
     <directionalLight ref={moon} position={[-15,32,-18]} intensity={.15} color="#90b9f5"/>
   </>
 }
-
 const WAVE_VERTEX=`
   uniform float uTime;
   uniform float uWind;
@@ -76,7 +73,6 @@ const WAVE_FRAGMENT=`
   uniform float uWind;
   varying vec2 vUV;
   void main(){
-    // Grid-quantized moving currents: chunky, intentionally pixel-like water.
     vec2 block=floor(vUV*vec2(96.0,96.0));
     vec2 p=(block/96.0-.5)*40.0;
     float blocks=mod(block.x+floor(block.y/3.0),4.0);
@@ -90,16 +86,10 @@ const WAVE_FRAGMENT=`
     gl_FragColor=vec4(c,.962);
   }
 `
-
-/** Three independent lakes. Opaque-enough surface hides sinking karts, while
- * ripple shader and shoreline remain inexpensive on Galaxy-class GPUs.
- */
 export function WaterWorld({clockRef,playerRef,phase,mode}){
-  const uniforms=useMemo(()=>({
-    uTime:{value:0},uDay:{value:1},uRain:{value:0},uWind:{value:0},
-  }),[])
+  const uniforms=useMemo(()=>({uTime:{value:0},uDay:{value:1},uRain:{value:0},uWind:{value:0}}),[])
   const splash=useRef()
-  useFrame((_,dt)=>{
+  useFrame(()=>{
     const env=clockRef.current
     uniforms.uTime.value=env.seconds||0
     uniforms.uDay.value=env.daylight??1
@@ -118,16 +108,13 @@ export function WaterWorld({clockRef,playerRef,phase,mode}){
   return <group name="ANIK_3D_WATER_LAKES">
     {WATER_BODIES.map(body=><group key={body.id} name={`LAKE_${body.id}`}>
       <mesh rotation={[-Math.PI/2,0,0]} position={[body.x,.16,body.z]} scale={[body.rx,body.rz,1]} receiveShadow={false}>
-        <ringGeometry args={[.91,1.13,52]}/>
-        <meshStandardMaterial color="#a4aa85" roughness={1}/>
+        <ringGeometry args={[.91,1.13,52]}/><meshStandardMaterial color="#a4aa85" roughness={1}/>
       </mesh>
       <mesh rotation={[-Math.PI/2,0,0]} position={[body.x,body.level,body.z]} scale={[body.rx,body.rz,1]} frustumCulled={true}>
-        <circleGeometry args={[.96,60]}/>
-        <shaderMaterial uniforms={uniforms} vertexShader={WAVE_VERTEX} fragmentShader={WAVE_FRAGMENT} transparent depthWrite side={THREE.DoubleSide}/>
+        <circleGeometry args={[.96,60]}/><shaderMaterial uniforms={uniforms} vertexShader={WAVE_VERTEX} fragmentShader={WAVE_FRAGMENT} transparent depthWrite side={THREE.DoubleSide}/>
       </mesh>
       <mesh rotation={[-Math.PI/2,0,0]} position={[body.x,body.level+.03,body.z]} scale={[body.rx,body.rz,1]}>
-        <ringGeometry args={[.90,.94,52]}/>
-        <meshBasicMaterial color="#bbf2d9" transparent opacity={.55} depthWrite={false}/>
+        <ringGeometry args={[.90,.94,52]}/><meshBasicMaterial color="#bbf2d9" transparent opacity={.55} depthWrite={false}/>
       </mesh>
     </group>)}
     <group ref={splash} visible={false} rotation={[-Math.PI/2,0,0]}>
@@ -137,7 +124,7 @@ export function WaterWorld({clockRef,playerRef,phase,mode}){
   </group>
 }
 
-/** Weather is 2 small GPU batches, recentered around the moving kart. */
+/** Three small GPU batches, recentered around the moving kart. */
 export function WeatherParticles({clockRef,playerRef,phase,budget}){
   const rainCount=budget.tier==='eco'?70:budget.tier==='high'?200:120
   const snowCount=budget.tier==='eco'?45:budget.tier==='high'?125:75
@@ -145,9 +132,7 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
   const rain=useRef(),snow=useRef(),windRef=useRef()
   const {rainGeo,snowGeo,windGeo}=useMemo(()=>{
     const rand=(seed=>()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296})(1987)
-    const rainy=new Float32Array(rainCount*6)
-    const snowing=new Float32Array(snowCount*3)
-    const windy=new Float32Array(windCount*6)
+    const rainy=new Float32Array(rainCount*6),snowing=new Float32Array(snowCount*3),windy=new Float32Array(windCount*6)
     for(let i=0;i<rainCount;i++){
       const p=i*6
       rainy[p]=(rand()-.5)*45;rainy[p+1]=rand()*21+1;rainy[p+2]=(rand()-.5)*45
@@ -163,9 +148,7 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
       windy[k+3]=windy[k]+1;windy[k+4]=windy[k+1];windy[k+5]=windy[k+2]+.3
     }
     const rg=new THREE.BufferGeometry(),sg=new THREE.BufferGeometry(),wg=new THREE.BufferGeometry()
-    rg.setAttribute('position',new THREE.BufferAttribute(rainy,3))
-    sg.setAttribute('position',new THREE.BufferAttribute(snowing,3))
-    wg.setAttribute('position',new THREE.BufferAttribute(windy,3))
+    rg.setAttribute('position',new THREE.BufferAttribute(rainy,3));sg.setAttribute('position',new THREE.BufferAttribute(snowing,3));wg.setAttribute('position',new THREE.BufferAttribute(windy,3))
     return {rainGeo:rg,snowGeo:sg,windGeo:wg}
   },[rainCount,snowCount,windCount])
   useEffect(()=>()=>{rainGeo.dispose();snowGeo.dispose();windGeo.dispose()},[rainGeo,snowGeo,windGeo])
@@ -173,9 +156,7 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
     const env=clockRef.current,active=phase==='racing'||phase==='exploring'
     const r=rain.current,s=snow.current,w=windRef.current
     if(!r||!s||!w)return
-    r.visible=active&&env.rain>.03
-    s.visible=active&&env.snow>.03
-    w.visible=active&&env.wind>.06
+    r.visible=active&&env.rain>.03;s.visible=active&&env.snow>.03;w.visible=active&&env.wind>.06
     const p=playerRef.current||{x:0,z:0}
     r.position.set(p.x,0,p.z);s.position.set(p.x,0,p.z);w.position.set(p.x,0,p.z)
     const step=Math.min(.06,dt)
@@ -193,38 +174,25 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
       const a=snowGeo.attributes.position.array
       for(let i=0;i<snowCount;i++){
         const k=i*3
-        a[k]+=env.windX*step*.27+Math.sin(env.seconds+i)*step*.35
-        a[k+1]-=(2.2+(i%4)*.25)*step
-        a[k+2]+=env.windZ*step*.27
+        a[k]+=env.windX*step*.27+Math.sin(env.seconds+i)*step*.35;a[k+1]-=(2.2+(i%4)*.25)*step;a[k+2]+=env.windZ*step*.27
         if(a[k+1]<.35){a[k+1]+=18;a[k]=((a[k]+22)%44+44)%44-22;a[k+2]=((a[k+2]+22)%44+44)%44-22}
       }
       snowGeo.attributes.position.needsUpdate=true
     }
     if(w.visible){
-      const a=windGeo.attributes.position.array
-      const norm=Math.max(.0001,Math.hypot(env.windX,env.windZ))
-      const dirX=env.windX/norm,dirZ=env.windZ/norm
+      const a=windGeo.attributes.position.array,norm=Math.max(.0001,Math.hypot(env.windX,env.windZ)),dirX=env.windX/norm,dirZ=env.windZ/norm
       for(let i=0;i<windCount;i++){
         const k=i*6
         a[k]+=env.windX*step*2.8;a[k+2]+=env.windZ*step*2.8
-        a[k]=((a[k]+25)%50+50)%50-25
-        a[k+2]=((a[k+2]+25)%50+50)%50-25
-        a[k+3]=a[k]+dirX*(1.1+env.windSpeed*.12)
-        a[k+4]=a[k+1]+.1*Math.sin(env.seconds*2+i)
-        a[k+5]=a[k+2]+dirZ*(1.1+env.windSpeed*.12)
+        a[k]=((a[k]+25)%50+50)%50-25;a[k+2]=((a[k+2]+25)%50+50)%50-25
+        a[k+3]=a[k]+dirX*(1.1+env.windSpeed*.12);a[k+4]=a[k+1]+.1*Math.sin(env.seconds*2+i);a[k+5]=a[k+2]+dirZ*(1.1+env.windSpeed*.12)
       }
       windGeo.attributes.position.needsUpdate=true
     }
   })
   return <group name="DYNAMIC_WEATHER_PARTICLES">
-    <lineSegments ref={rain} geometry={rainGeo} visible={false} frustumCulled={false}>
-      <lineBasicMaterial color="#b6efff" transparent opacity={.76} depthWrite={false}/>
-    </lineSegments>
-    <points ref={snow} geometry={snowGeo} visible={false} frustumCulled={false}>
-      <pointsMaterial color="#f5fcff" size={.27} transparent opacity={.9} depthWrite={false}/>
-    </points>
-    <lineSegments ref={windRef} geometry={windGeo} visible={false} frustumCulled={false}>
-      <lineBasicMaterial color="#d3eac1" transparent opacity={.5} depthWrite={false}/>
-    </lineSegments>
+    <lineSegments ref={rain} geometry={rainGeo} visible={false} frustumCulled={false}><lineBasicMaterial color="#b6efff" transparent opacity={.76} depthWrite={false}/></lineSegments>
+    <points ref={snow} geometry={snowGeo} visible={false} frustumCulled={false}><pointsMaterial color="#f5fcff" size={.27} transparent opacity={.9} depthWrite={false}/></points>
+    <lineSegments ref={windRef} geometry={windGeo} visible={false} frustumCulled={false}><lineBasicMaterial color="#d3eac1" transparent opacity={.5} depthWrite={false}/></lineSegments>
   </group>
 }

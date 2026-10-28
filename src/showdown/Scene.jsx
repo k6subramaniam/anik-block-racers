@@ -4,7 +4,7 @@ import {useGLTF} from '@react-three/drei'
 import * as THREE from 'three'
 import {createPixelTexture,voxelizeSceneMaterials} from '../game/VoxelVisuals.jsx'
 import {WeatherParticles} from '../game/WorldAtmosphere.jsx'
-import {STEP,ROUND_TICKS,stepShowdown,showdownWeather} from './rules.js'
+import {STEP,stepShowdown,showdownWeather} from './rules.js'
 import {recordReplay,sampleReplay} from './replay.js'
 const MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 
@@ -17,10 +17,11 @@ function BlockBatch({items,color}){
     const obj=new THREE.Object3D()
     for(let i=0;i<items.length;i++){
       const t=items[i];obj.position.set(t.x,t.y,t.z);obj.scale.set(t.w,t.h,t.d);obj.updateMatrix()
-      ref.current.setMatrixAt(i,obj.matrix)
-      ref.current.setColorAt(i,new THREE.Color(t.color||color))
+      ref.current.setMatrixAt(i,obj.matrix);ref.current.setColorAt(i,new THREE.Color(t.color||color))
     }
-    ref.current.instanceMatrix.needsUpdate=true;ref.current.computeBoundingSphere()
+    ref.current.instanceMatrix.needsUpdate=true
+    if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true
+    ref.current.computeBoundingSphere()
   },[items,color])
   return <instancedMesh ref={ref} args={[null,null,items.length]}><boxGeometry args={[1,1,1]}/><meshStandardMaterial color="white" roughness={1}/></instancedMesh>
 }
@@ -42,42 +43,45 @@ function Ramp({r,map}){
   </group>
 }
 function Arena({arena}){
-  const texture=useMemo(()=>createPixelTexture('road',36,36),[])
+  const half=arena.bounds.maxX,edge=half+2,size=half*2+4
+  const texture=useMemo(()=>createPixelTexture('road',Math.ceil(size/2.4),Math.ceil(size/2.4)),[size])
   const block=useMemo(()=>createPixelTexture('stone'),[])
   const blocks=useMemo(()=>{
     const items=[]
-    for(let i=-40;i<=40;i+=4)for(const s of [-1,1]){
-      items.push({x:i,y:.4,z:s*43,w:3.85,h:.8,d:1.5,color:(i/4)%2?'#c8fa58':'#f1f3d2'})
-      items.push({x:s*43,y:.4,z:i,w:1.5,h:.8,d:3.85,color:(i/4)%2?'#c8fa58':'#f1f3d2'})
+    for(let i=-half+1;i<=half;i+=4)for(const s of [-1,1]){
+      const stripe=Math.floor((i+half)/4)%2
+      items.push({x:i,y:.4,z:s*edge,w:3.85,h:.8,d:1.5,color:stripe?'#c8fa58':'#f1f3d2'})
+      items.push({x:s*edge,y:.4,z:i,w:1.5,h:.8,d:3.85,color:stripe?'#c8fa58':'#f1f3d2'})
     }
     for(let i=0;i<24;i++){
-      const a=i*Math.PI/12,x=Math.sin(a)*54,z=Math.cos(a)*54,h=3+i%4
+      const a=i*Math.PI/12,x=Math.sin(a)*(half+19),z=Math.cos(a)*(half+19),h=3+i%4
       items.push({x,y:h/2,z,w:1.2,h,d:1.2,color:'#7c5b35'})
       items.push({x,y:h+1,z,w:4.3,h:2.5,d:4.3,color:i%2?'#639b37':'#347547'})
       items.push({x,y:h+3,z,w:2.8,h:1.5,d:2.8,color:'#78ad40'})
     }
     for(let i=0;i<26;i++){
-      const x=(i%7-3)*13,z=-60-Math.floor(i/7)*12,h=6+(i*7%5)*4
+      const x=(i%7-3)*13,z=-half-23-Math.floor(i/7)*12,h=6+(i*7%5)*4
       items.push({x,y:h/2,z,w:9,h,d:9,color:i%2?'#47748a':'#536887'})
       items.push({x,y:h+.6,z,w:10,h:1.2,d:10,color:arena.accent})
     }
     return items
   },[arena])
-  useEffect(()=>()=>{texture.dispose();block.dispose()},[texture,block])
+  useEffect(()=>()=>texture.dispose(),[texture])
+  useEffect(()=>()=>block.dispose(),[block])
   return <group name="SHOWDOWN_ARENA">
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.035,0]} receiveShadow>
-      <planeGeometry args={[86,86]}/><meshStandardMaterial map={texture} color="#4b6069" roughness={1}/>
+      <planeGeometry args={[size,size]}/><meshStandardMaterial map={texture} color="#4b6069" roughness={1}/>
     </mesh>
-    <Cube at={[0,-.7,0]} size={[125,1.3,125]} color="#5c8546"/>
+    <Cube at={[0,-.7,0]} size={[size+45,1.3,size+45]} color="#5c8546"/>
     <BlockBatch items={blocks} color="#c8fa58"/>
     {arena.ramps.map(r=><Ramp key={r.id} r={r} map={block}/>)}
     {arena.boosts.map(b=><group key={b.id} position={[b.x,.03,b.z]}>
       <Cube at={[0,0,0]} size={[4,.1,3]} color="#2fc5ce"/>
       {[-1,0,1].map(n=><Cube key={n} at={[n,.09,0]} size={[.45,.08,2]} color="#edff90"/>)}
     </group>)}
-    <Cube at={[0,14,-47]} size={[24,4,1]} color="#132c38"/>
-    <Cube at={[-12,7,-47]} size={[.6,14,.6]} color="#c8fa58"/>
-    <Cube at={[12,7,-47]} size={[.6,14,.6]} color="#c8fa58"/>
+    <Cube at={[0,14,-half-6]} size={[24,4,1]} color="#132c38"/>
+    <Cube at={[-12,7,-half-6]} size={[.6,14,.6]} color="#c8fa58"/>
+    <Cube at={[12,7,-half-6]} size={[.6,14,.6]} color="#c8fa58"/>
   </group>
 }
 function Robot({def,rootRef,burstRef}){
@@ -109,9 +113,7 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
   useEffect(()=>{onReady(true);return()=>kart.resources.dispose()},[kart,onReady])
   const kartRoot=useRef(),robots=useRef({}),bursts=useRef({}),hudTime=useRef(0),sun=useRef()
   const envRef=useRef(showdownWeather(arena,0)),playerRef=useRef(engineRef.current.state.player)
-  const scratch=useMemo(()=>({target:new THREE.Vector3(),position:new THREE.Vector3(),sky:new THREE.Color()}),[])
-  // Commit the exact fixed-tick clock before the paused view is painted.
-  // The normal 10 Hz HUD refresh must not settle by 0.1s after pause/blur.
+  const scratch=useMemo(()=>({target:new THREE.Vector3(),position:new THREE.Vector3(),sky:new THREE.Color(),overcast:new THREE.Color('#68818c')}),[])
   useLayoutEffect(()=>{
     if(phase!=='paused')return
     const engine=engineRef.current,s=engine.state,env=showdownWeather(engine.arena,s.ticks)
@@ -121,8 +123,7 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
     hudTime.current=0
   },[phase,onHud,engineRef])
   useFrame(({camera,scene},rawDt)=>{
-    const engine=engineRef.current
-    const dt=Math.min(.25,Math.max(0,rawDt))
+    const engine=engineRef.current,dt=Math.min(.25,Math.max(0,rawDt))
     if(phase==='running'&&!engine.state.done){
       engine.accumulator+=dt
       while(engine.accumulator>=STEP&&!engine.state.done){
@@ -139,12 +140,11 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
       if(engine.replayTick>=engine.range.end&&!engine.replayDone)engine.replayDone=true
     }
     engine.visual=state
-    const p=state.player
-    playerRef.current=p
+    const p=state.player;playerRef.current=p
     const env=showdownWeather(engine.arena,state.tick??state.ticks??0);envRef.current=env
-    scratch.sky.set('#99cbd8').lerp(new THREE.Color('#68818c'),env.cloudCover*.55)
+    scratch.sky.set('#99cbd8').lerp(scratch.overcast,env.cloudCover*.55)
     scene.background?.copy(scratch.sky)
-    if(scene.fog){scene.fog.color.copy(scratch.sky);scene.fog.near=70-env.rain*20;scene.fog.far=140-env.snow*35}
+    if(scene.fog){scene.fog.color.copy(scratch.sky);scene.fog.near=110-env.rain*30;scene.fog.far=250-env.snow*55}
     if(sun.current)sun.current.intensity=2.2-env.cloudCover*.6
     if(kartRoot.current){
       kartRoot.current.position.set(p.x,p.y,p.z)
@@ -167,11 +167,9 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
       }
     }
     scratch.target.set(p.x,1.25+p.y,p.z)
-    if(phase==='lobby'){
-      scratch.position.set(32,31,53);scratch.target.set(0,1,3)
-    }else if(cameraMode==='aerial'){
-      scratch.position.set(p.x,42,p.z+12)
-    }else{
+    if(phase==='lobby'){scratch.position.set(32,31,53);scratch.target.set(0,1,3)}
+    else if(cameraMode==='aerial')scratch.position.set(p.x,42,p.z+12)
+    else{
       const replaying=phase==='replay'||phase==='exporting',d=replaying?11:8.8+Math.abs(p.speed)*.06
       scratch.position.set(p.x+Math.sin(p.yaw)*d+(replaying?2.8:0),p.y+6,p.z+Math.cos(p.yaw)*d)
     }
@@ -186,8 +184,6 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
         weather:env.label,notice:engine.notice})
     }
   })
-  // Capture synchronously immediately after this game's WebGL render. This avoids
-  // preserveDrawingBuffer overhead and blank video frames on mobile GPUs.
   useFrame(({gl,scene,camera})=>{
     gl.render(scene,camera)
     const engine=engineRef.current
@@ -209,7 +205,7 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
   </>
 }
 export default function ShowdownScene(props){
-  return <Canvas dpr={Math.min(1.3,props.budget.dpr)} shadows={props.budget.shadows} camera={{position:[32,31,53],fov:57,near:.1,far:220}}
+  return <Canvas dpr={Math.min(1.3,props.budget.dpr)} shadows={props.budget.shadows} camera={{position:[32,31,53],fov:57,near:.1,far:380}}
     gl={{alpha:false,antialias:props.budget.antialias,powerPreference:'high-performance'}}>
     <color attach="background" args={['#99cbd8']}/><fog attach="fog" args={['#99cbd8',70,140]}/>
     <Suspense fallback={null}><PlayField {...props}/></Suspense>

@@ -1,15 +1,17 @@
-/** Bot Smash Showdown v1 rules. Pure fixed-step simulation; no DOM or network.
+/** Bot Smash Showdown versioned rules. Pure fixed-step simulation; no DOM or network.
  * Challenge IDs include the rules version. A seed fixes arena layout, bot paths,
  * and weather. Local/shared scores are NOT server-verified leaderboard entries.
  */
 import { moveKart } from '../game/simulation.js'
 import { environmentAt } from '../game/environment.js'
 
-export const RULES_VERSION = 1
+export const RULES_VERSION = 2
 export const STEP = 1 / 60
 export const ROUND_TICKS = 3600
 export const ROUND_SECONDS = 60
-export const BOUNDS = Object.freeze({ minX: -41, maxX: 41, minZ: -41, maxZ: 41 })
+export const LEGACY_BOUNDS = Object.freeze({ minX: -41, maxX: 41, minZ: -41, maxZ: 41 })
+export const BOUNDS = Object.freeze({ minX: -82, maxX: 82, minZ: -82, maxZ: 82 })
+export const rulesVersionFor = code => code?.startsWith('sd1-') ? 1 : 2
 export const MAX_SCORE = 2_000_000
 const TAU = Math.PI * 2
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n))
@@ -27,22 +29,22 @@ export function randomFor(seed) {
 export function dailyChallenge(date = new Date()) {
   const d = date instanceof Date ? date : new Date(date)
   if (!Number.isFinite(d.getTime())) throw new RangeError('A valid date is required')
-  return `sd1-d${d.toISOString().slice(0, 10).replaceAll('-', '')}`
+  return `sd2-d${d.toISOString().slice(0, 10).replaceAll('-', '')}`
 }
 export function validChallenge(code) {
   if (typeof code !== 'string' || code.length > 24) return false
-  if (/^sd1-c[0-9a-f]{8}$/.test(code)) return true
-  if (!/^sd1-d\d{8}$/.test(code)) return false
+  if (/^sd[12]-c[0-9a-f]{8}$/.test(code)) return true
+  if (!/^sd[12]-d\d{8}$/.test(code)) return false
   const day = code.slice(5), iso = `${day.slice(0,4)}-${day.slice(4,6)}-${day.slice(6)}T00:00:00Z`
   const date = new Date(iso)
-  return Number.isFinite(date.getTime()) && dailyChallenge(date) === code
+  return Number.isFinite(date.getTime()) && dailyChallenge(date).slice(3) === code.slice(3)
 }
 export function newChallenge(entropy) {
   const n = Number.isFinite(entropy) ? entropy >>> 0 : hashSeed(String(Date.now()))
-  return `sd1-c${n.toString(16).padStart(8,'0')}`
+  return `sd2-c${n.toString(16).padStart(8,'0')}`
 }
 export function challengeTitle(code) {
-  return /^sd1-d/.test(code) ? `Daily · ${code.slice(5,9)}-${code.slice(9,11)}-${code.slice(11,13)} UTC` : `Challenge · ${String(code).slice(-8).toUpperCase()}`
+  return /^sd[12]-d/.test(code) ? `Daily · ${code.slice(5,9)}-${code.slice(9,11)}-${code.slice(11,13)} UTC` : `Challenge · ${String(code).slice(-8).toUpperCase()}`
 }
 export function challengeFromSearch(search, fallback = dailyChallenge()) {
   const query = new URLSearchParams(String(search).slice(0, 2048))
@@ -67,11 +69,11 @@ export function makeChallengeUrl(base, code, score) {
 
 export function makeArena(code) {
   if (!validChallenge(code)) throw new RangeError('Invalid challenge ID')
-  const seed = hashSeed(code), rng = randomFor(seed)
-  // One clear runway always gives new players a reachable first target.
+  const seed = hashSeed(code), rng = randomFor(seed), version = rulesVersionFor(code)
   const botHomes = [
     [0,22],[-20,23],[22,22],[-23,0],[23,0],[-22,-23],[22,-22],[0,-27],[-9,-13],[11,13],
   ]
+  if(version===2)botHomes.push([-58,48],[58,48],[-58,-48],[58,-48],[0,-63],[63,0])
   const bots = botHomes.map(([x,z],i) => ({
     id: `bot-${i}`, index: i, color: COLORS[i % COLORS.length],
     homeX: x, homeZ: z, phase: rng() * TAU,
@@ -84,10 +86,15 @@ export function makeArena(code) {
     { id:'south-ramp', x:-16, z:-22, yaw:Math.PI, width:7, length:10, height:2.8 },
   ]
   const boosts = [{id:'boost-0',x:0,z:17}, {id:'boost-1',x:-24,z:-6}, {id:'boost-2',x:25,z:29}]
-  return {code, seed, bots, ramps, boosts, weatherOffset:(seed%4)*55, accent:COLORS[seed%COLORS.length]}
+  if(version===2){
+    ramps.push({id:'outer-north',x:0,z:-43,yaw:0,width:10,length:16,height:4},
+      {id:'outer-east',x:48,z:32,yaw:-Math.PI/2,width:10,length:16,height:4},
+      {id:'outer-west',x:-48,z:-32,yaw:Math.PI/2,width:10,length:16,height:4})
+    boosts.push({id:'boost-3',x:0,z:-31},{id:'boost-4',x:35,z:32},{id:'boost-5',x:-35,z:-32})
+  }
+  return {code, seed, rulesVersion:version, bounds:version===1?LEGACY_BOUNDS:BOUNDS, bots, ramps, boosts, weatherOffset:(seed%4)*55, accent:COLORS[seed%COLORS.length]}
 }
 export function showdownWeather(arena, ticks) {
-  // Complete weather sequence over the round, fixed for this challenge seed.
   return environmentAt(arena.weatherOffset + ticks * STEP * 3.65)
 }
 function botPose(def, ticks) {
@@ -139,7 +146,7 @@ export function stepShowdown(previous, input={}, suppliedArena) {
   if(ticks>state.comboUntil)state.combo=1
   const weather=showdownWeather(arena,ticks)
   const before=previous.player
-  let p=moveKart(before,input,STEP,[],{mode:'explore',bounds:BOUNDS,weather})
+  let p=moveKart(before,input,STEP,[],{mode:'explore',bounds:arena.bounds,weather})
   p.boostTimer=Math.max(0,(before.boostTimer||0)-STEP)
   p.boostCooldown=Math.max(0,(before.boostCooldown||0)-STEP)
   p.jumpCooldown=Math.max(0,(before.jumpCooldown||0)-STEP)
@@ -183,7 +190,6 @@ export function stepShowdown(previous, input={}, suppliedArena) {
     }
     let bot={...n,...botPose(n,ticks),burst,hitCooldown}
     if(p.y>2.25 || hitCooldown>0 || p.speed<6.5)return bot
-    // Swept player-vs-moving-bot contact prevents high-speed tunnelling.
     const relativeOld={x:before.x-n.x,z:before.z-n.z}
     const relativeNow={x:p.x-bot.x,z:p.z-bot.z}
     const contact=segmentDistance(relativeOld,relativeNow,{x:0,z:0})
@@ -206,6 +212,6 @@ export function stepShowdown(previous, input={}, suppliedArena) {
 }
 export function resultFor(state) {
   if(!state.done || state.ticks!==ROUND_TICKS)throw new Error('Only a finished 60-second run can be saved')
-  return {code:state.code,rulesVersion:RULES_VERSION,score:state.score,smashes:state.smashes,
+  return {code:state.code,rulesVersion:rulesVersionFor(state.code),score:state.score,smashes:state.smashes,
     jumps:state.jumps,bestCombo:state.bestCombo,bestAir:Math.round(state.bestAir*100)/100,ticks:state.ticks}
 }

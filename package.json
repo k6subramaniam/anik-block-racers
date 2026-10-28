@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
-  "description": "ANIK Bot Smash Showdown: 60-second seeded challenges, 5x combos, actual gameplay replays, vertical clip export and friend links",
+  "description": "Bigger World and XL Arena: ninefold open-world area, four frontier districts, versioned 60-second challenges and actual gameplay sharing",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

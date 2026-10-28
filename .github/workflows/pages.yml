@@ -1,7 +1,7 @@
 name: Build and publish Samsung Galaxy game
 on:
   push:
-    branches: [main, feature/bot-smash-v3]
+    branches: [main, feature/bot-smash-v3, feature/bigger-world-v3-1]
   workflow_dispatch:
 permissions:
   contents: read

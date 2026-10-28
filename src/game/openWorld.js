@@ -4,8 +4,9 @@
  */
 import { moveKart, SPAWN } from './simulation.js'
 import {advanceWater, WATER_DESTINATIONS, WATER_BODIES} from './water.js'
+import {EXPANDED_BOUNDS, FRONTIER_ZONES, FRONTIER_OBSTACLES} from './frontier.js'
 
-export const WORLD_BOUNDS = Object.freeze({minX:-151,maxX:151,minZ:-126,maxZ:126})
+export const WORLD_BOUNDS = EXPANDED_BOUNDS
 export const EXPLORE_SPAWN = Object.freeze({x:5,z:-37,yaw:0})
 
 export const ZONES = Object.freeze([
@@ -14,10 +15,10 @@ export const ZONES = Object.freeze([
   {id:'canyon',name:'SUNSET CANYON',label:'Temple and stone mesas',icon:'▲',color:'#ffc176',x:-107,z:79,radius:30,spawn:{x:-105,z:78,yaw:Math.PI/2}},
   {id:'ember',name:'EMBER PEAKS',label:'Lava volcano and dragon',icon:'♨',color:'#ff7452',x:104,z:78,radius:30,spawn:{x:102,z:76,yaw:-Math.PI/2}},
   {id:'grove',name:'PORTAL GROVE',label:'Ancient jump portal',icon:'◎',color:'#b4ff8b',x:0,z:-106,radius:24,spawn:{x:0,z:-91,yaw:0}},
+  ...FRONTIER_ZONES,
   {id:'village',name:'BLOCKHAVEN VILLAGE',label:'Walking villagers, farms and market',icon:'⌂',color:'#f8d67a',x:-63,z:0,radius:32,spawn:{x:-63,z:-28,yaw:Math.PI}},
 ])
 
-// Navigable, individually collectible artifacts, at accessible ground-level positions.
 export const RELICS = Object.freeze(ZONES.map(zone=>({
   id:'relic-'+zone.id,
   x:zone.id==='grove'?0:zone.id==='village'?-63:zone.x,
@@ -25,9 +26,8 @@ export const RELICS = Object.freeze(ZONES.map(zone=>({
   zoneId:zone.id,color:zone.color,
 })))
 
-// Collision silhouettes for Higgsfield landmark parts; a lightweight circles-vs-kart
-// resolution runs without a second expensive per-polygon physics mesh.
 export const LANDMARK_OBSTACLES = Object.freeze([
+  ...FRONTIER_OBSTACLES,
   ...[[85,-73],[125,-74],[85,-40],[125,-40]].map(([x,z],i)=>({id:'city-tower-'+i,x,z,radius:7.5})),
   {id:'neon-robot',x:104,z:-94,radius:5},
   ...[[-126,-77],[-113,-86],[-94,-84],[-81,-71],[-126,-50],[-83,-46]].map(([x,z],i)=>({id:'crystal-'+i,x,z,radius:3.5})),
@@ -41,8 +41,6 @@ export const LANDMARK_OBSTACLES = Object.freeze([
   {id:'ember-dragon',x:90,z:107,radius:6},
   {id:'portal-column-left',x:-7,z:-106,radius:1.9},
   {id:'portal-column-right',x:7,z:-106,radius:1.9},
-  // Blockhaven's four houses, forge, well, market stalls and mill use
-  // simple cylindrical hit volumes for fast Galaxy-friendly collision tests.
   ...[[-84,19],[-42,18],[-84,-18],[-42,-18]].map(([x,z],i)=>({id:'village-house-'+i,x,z,radius:7.25})),
   {id:'blockhaven-forge',x:-94,z:0,radius:4.3},
   {id:'blockhaven-well',x:-62,z:9,radius:3.1},
@@ -106,11 +104,9 @@ export function advanceExplore(state,input,dt,obstacles=[],weather=null){
       break
     }
   }
-  // Crossing the portal from the grove side returns to the familiar race hub.
   if(next.portalCooldown<=0 && Math.abs(next.x)<4 && state.z>=-107 && next.z< -107){
     next={...next,x:SPAWN.x,z:SPAWN.z,yaw:0,speed:0,portalCooldown:5,event:'portal',zoneName:'VOXEL VALLEY'}
   }
-  // Lava is a collision hazard rather than a traversable road.
   if(Math.hypot(next.x-120,next.z-118)<10.5){
     next={...next,x:102,z:76,speed:0,portalCooldown:3,event:'lava'}
   }

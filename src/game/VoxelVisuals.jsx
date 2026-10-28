@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { classifyVoxelSurface, pixelTileData, PIXEL_SIZE, VOXEL_TERRAIN, VOXEL_TREES, VOXEL_FLOWERS, VOXEL_HILLS } from './voxelStyle.js'
 
-/** Tiny, entirely original, procedurally generated pixel textures.
- * Nearest-neighbour sampling + no photo textures yields a consistent voxel look.
- */
 export function createPixelTexture(kind = 'stone', repeatX = 1, repeatY = 1) {
   const texture = new THREE.DataTexture(pixelTileData(kind), PIXEL_SIZE, PIXEL_SIZE, THREE.RGBAFormat)
   texture.name = `ANIK_${kind}_16px_original`
@@ -19,10 +16,6 @@ export function createPixelTexture(kind = 'stone', repeatX = 1, repeatY = 1) {
   texture.needsUpdate = true
   return texture
 }
-
-/** Materials stay grouped by source UUID; 850+ level parts do not allocate
- * hundreds of individual textures or draw calls. Preserves original colors.
- */
 export function voxelizeSceneMaterials(...scenes) {
   const textures = new Map(), materials = new Map()
   function textureFor(kind) {
@@ -52,8 +45,6 @@ export function voxelizeSceneMaterials(...scenes) {
   return { materials: materials.size, textures: textures.size,
     dispose: () => { for (const m of materials.values()) m.dispose(); for (const t of textures.values()) t.dispose() } }
 }
-
-/** One GPU draw call per class of blocks; transforms are written only once. */
 function InstancedBlocks({ items, transform, colorOf, palette = '#ffffff', texture, name }) {
   const ref = useRef()
   useEffect(() => {
@@ -77,7 +68,6 @@ function InstancedBlocks({ items, transform, colorOf, palette = '#ffffff', textu
     <meshStandardMaterial map={texture} color={palette} roughness={1} metalness={0} flatShading/>
   </instancedMesh>
 }
-
 const stem = t => ({x:t.x,y:t.height*.5,z:t.z,w:1.0,h:t.height,d:1.0})
 const canopy = t => ({x:t.x,y:t.height+.35,z:t.z,w:t.canopy,h:2.2,d:t.canopy})
 const canopyTop = t => ({x:t.x,y:t.height+1.78,z:t.z,w:t.canopy*.72,h:1.35,d:t.canopy*.72})
@@ -88,10 +78,6 @@ const hillGrass = h => ({x:h.x,y:h.height+.06,z:h.z,w:3.23,h:.13,d:3.23})
 const flowerStem = f => ({x:f.x,y:f.size*.48,z:f.z,w:.15,h:f.size,d:.15})
 const flowerHead = f => ({x:f.x,y:f.size+.08,z:f.z,w:.54,h:.43,d:.54})
 const petalColor = f => ['#f8d35a','#ef7793','#e2a0fa','#9de7f2'][f.color]
-
-/** Colourful 16px tessellated topsoil, block trees, chunky cliffs and flowers.
- * Existing race asphalt stays above the new low-profile terrain layer.
- */
 export function VoxelLandscape({ budget }) {
   const textures = useMemo(() => ({
     grass:createPixelTexture('grass'), dirt:createPixelTexture('dirt'),
@@ -118,7 +104,6 @@ export function VoxelLandscape({ budget }) {
     <InstancedBlocks name="VOXEL_flower_squares" items={flowers} transform={flowerHead} colorOf={petalColor} texture={textures.wool}/>
   </group>
 }
-
 const CLOUDS = Object.freeze(Array.from({length:22},(_,i)=>{
   const a=(i*1.6180339887498948)%1, b=(i*.41421356237)%1
   return { x:(a-.5)*345, z:(b-.5)*315, y:52+(i%4)*7, width:10+(i%5)*2 }
@@ -129,10 +114,9 @@ const CLOUD_PARTS=Object.freeze(CLOUDS.flatMap((cloud,i)=>[
   {x:cloud.x+cloud.width*.44,y:cloud.y-1.25,z:cloud.z-1.7,w:cloud.width*.66,h:1.7,d:4.1},
 ]))
 const cloudPos = c => ({x:c.x,y:c.y,z:c.z,w:c.w,h:c.h,d:c.d})
-
-/** Large, square-edged clouds and a cuboid sun/moon—no image downloads. */
 export function VoxelSky({ clockRef }) {
-  const drifting = useRef(), sun = useRef(), moon = useRef()
+  const drifting = useRef(), sun = useRef(), moon = useRef(), skyRoot = useRef()
+  const {camera}=useThree()
   const cloudsMaterial = useMemo(() => new THREE.MeshBasicMaterial({color:'#eff9f3',transparent:true,opacity:.84,depthWrite:false,fog:true}),[])
   useEffect(()=>()=>cloudsMaterial.dispose(),[cloudsMaterial])
   const ref=useRef()
@@ -149,6 +133,7 @@ export function VoxelSky({ clockRef }) {
   },[])
   useFrame(()=>{
     const env=clockRef.current
+    if(skyRoot.current)skyRoot.current.position.set(camera.position.x,0,camera.position.z)
     if(!env)return
     const time=env.seconds||0, daylight=env.daylight ?? 1
     if(drifting.current) drifting.current.position.x=Math.sin(time*.006)*13 + Math.cos(time*.003)*4
@@ -163,7 +148,7 @@ export function VoxelSky({ clockRef }) {
       moon.current.position.set(-65*Math.cos(env.sunAngle),65,-70)
     }
   })
-  return <group name="VOXEL_CUBIC_CLOUDS_AND_SKY">
+  return <group ref={skyRoot} name="VOXEL_CUBIC_CLOUDS_AND_SKY">
     <group ref={drifting}>
       <instancedMesh ref={ref} name="VOXEL_sky_cloud_blocks" args={[null,null,CLOUD_PARTS.length]} frustumCulled={false}>
         <boxGeometry args={[1,1,1]}/><primitive object={cloudsMaterial} attach="material"/>

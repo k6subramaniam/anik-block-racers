@@ -1,4 +1,4 @@
-import {validChallenge,ROUND_TICKS,MAX_SCORE} from './rules.js'
+import {validChallenge,ROUND_TICKS,MAX_SCORE,rulesVersionFor} from './rules.js'
 export const SCORE_KEY='anik-showdown-scores-v1'
 export const STATS_KEY='anik-showdown-local-events-v1'
 export const CONSENT_KEY='anik-showdown-local-stats-consent-v1'
@@ -6,7 +6,7 @@ export const EVENT_NAMES=new Set(['lobby_open','challenge_start','challenge_comp
 export function browserStorage(){try{return typeof localStorage==='undefined'?null:localStorage}catch{return null}}
 function read(key,storage){try{return JSON.parse(storage?.getItem(key)||'[]')}catch{return []}}
 export function validResult(value){
-  return !!value&&validChallenge(value.code)&&value.rulesVersion===1&&value.ticks===ROUND_TICKS&&
+  return !!value&&validChallenge(value.code)&&value.rulesVersion===rulesVersionFor(value.code)&&value.ticks===ROUND_TICKS&&
     Number.isInteger(value.score)&&value.score>=0&&value.score<=MAX_SCORE&&
     Number.isInteger(value.smashes)&&value.smashes>=0&&value.smashes<=150&&
     Number.isInteger(value.jumps)&&value.jumps>=0&&value.jumps<=180&&

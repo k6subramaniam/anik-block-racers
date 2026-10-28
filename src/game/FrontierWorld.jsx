@@ -24,10 +24,13 @@ function Blocks({parts,material,name}){
   const ref=useRef()
   useEffect(()=>{
     const mesh=ref.current;if(!mesh)return
+    // R3F detaches child geometry before passive unmount cleanup. Retain the
+    // resource itself rather than reading mesh.geometry after it becomes null.
+    const geometry=mesh.geometry
     const dummy=new THREE.Object3D(),color=new THREE.Color()
     parts.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.scale.set(p.w,p.h,p.d);dummy.rotation.set(0,p.yaw||0,0);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);mesh.setColorAt(i,color.set(p.color||IDENTITY_COLOR))})
     mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()
-    return()=>{mesh.geometry.dispose();mesh.dispose()}
+    return()=>{geometry?.dispose();mesh.dispose()}
   },[parts])
   if(!parts.length)return null
   return <instancedMesh ref={ref} args={[null,null,parts.length]} material={material} name={name} dispose={null}><boxGeometry args={[1,1,1]}/></instancedMesh>

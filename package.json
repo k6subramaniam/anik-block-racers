@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
-  "description": "Samsung 3D voxel racing game with six biomes, walking AI villagers, block town assets and kart/animal bots",
+  "description": "Samsung 3D voxel racing game: three plungeable lakes, hydrodynamic rescue, day/night cycle, dynamic clear/rain/snow/wind weather and grip physics",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

@@ -29,3 +29,9 @@ Reviewed October 25, 2026.
 4. Tap **Map** and travel to all five zones, collecting floating relics at each destination.
 5. Go through the glowing Portal Grove gate, then use the flag icon to return to **Race 3 Laps**.
 6. Switch to Eco graphics if framerate is low and report device/browser, whether it was an installed PWA, and any frame drops or rendering glitches.
+
+
+## v2.3 water and weather checks
+- Pure simulation: water entering/splash-once, drag/submersion, resurfacing, auto-rescue, lake-safe fast travel, wet and snowy driving grip, wind forces, all 4 weather phases and day-night time progression.
+- Samsung: particle budget Eco 70 rain/45 snow, Balanced 120/75, High 200/125. No high-poly terrain or volumetric fluid simulations.
+- Real-device FPS and heat: not measured in the automated runner; verify on physical Galaxy hardware after deployment.

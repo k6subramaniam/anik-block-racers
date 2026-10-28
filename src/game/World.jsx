@@ -11,6 +11,8 @@ import {makeNpcs, advanceNpcs, applyRamming} from './npcAI.js'
 import NpcActors from './NpcActors.jsx'
 import VoxelVillagers from './VoxelVillagers.jsx'
 import {makeVillagers,advanceVillagers,nearbyVillager,talkToVillager} from './villagerAI.js'
+import {environmentAt} from './environment.js'
+import {SkyAndWeather,WaterWorld,WeatherParticles} from './WorldAtmosphere.jsx'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
@@ -73,7 +75,7 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
   const rigid = useRef(null)
   const race = playerRef
   const elapsedHudRefresh = useRef(0)
@@ -81,6 +83,7 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
   const lastCollisionToast = useRef(-5)
   const lastCoinTick = useRef(new Map())
   const nextCull = useRef(0)
+  const lastWeather = useRef('clear')
   const { camera } = useThree()
 
   useEffect(() => {
@@ -92,6 +95,7 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
     lastCoinTick.current = new Map()
     cameraTarget.current.set(fresh.x,1.1,fresh.z)
     nextCull.current=0
+    lastWeather.current=weatherClockRef.current.kind
     if(rigid.current){
       rigid.current.setTranslation({ x: fresh.x, y: 0, z: fresh.z },true)
       rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
@@ -142,8 +146,8 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
         remaining-=dt
         const old=next
         next=mode==='explore'
-          ? advanceExplore(old,inputRef.current,dt,objects)
-          : advanceKart(old,inputRef.current,dt,objects)
+          ? advanceExplore(old,inputRef.current,dt,objects,weatherClockRef.current)
+          : advanceKart(old,inputRef.current,dt,objects,weatherClockRef.current)
         // AI updates and player-initiated rams share this deterministic frame step.
         // This avoids game/visual desync, repetitive hit damage and teleport hits.
         const moving=advanceNpcs(npcRef.current,dt,next,mode)
@@ -163,7 +167,7 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
         next.boostTimer=Math.max(0,(old.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)
         for(const pad of boostLocations){
-          if(next.boostCooldown<=0 && Math.hypot(next.x-pad.x,next.z-pad.z)<2.0){
+          if(!next.inWater && next.boostCooldown<=0 && Math.hypot(next.x-pad.x,next.z-pad.z)<2.0){
             next={...next,boostTimer:1.5,boostCooldown:2,speed:Math.min(MAX_SPEED+7,Math.max(12,Math.abs(next.speed)+8)),event:'boost'}
             break
           }
@@ -191,6 +195,10 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
       }
       race.current=next
       if(frameEvent) onEvent(frameEvent,next)
+      if(weatherClockRef.current.kind!==lastWeather.current){
+        lastWeather.current=weatherClockRef.current.kind
+        onEvent('weather-change',{...next,weatherLabel:weatherClockRef.current.label})
+      }
       if(mode==='race' && next.event==='finished') onPhase('finished')
     }
     // Coarse frustum-distance gating: distant hero districts don't cost phone
@@ -203,13 +211,13 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
       }
     }
     if(rigid.current){
-      rigid.current.setNextKinematicTranslation({x:next.x,y:0,z:next.z})
+      rigid.current.setNextKinematicTranslation({x:next.x,y:-1.55*(next.submersion||0),z:next.z})
       rigid.current.setNextKinematicRotation({x:0,y:Math.sin(next.yaw/2),z:0,w:Math.cos(next.yaw/2)})
     }
 
     // The camera follows vehicle orientation, never a fixed world-axis or flat 2D projection.
     const front=new THREE.Vector3(-Math.sin(next.yaw),0,-Math.cos(next.yaw))
-    const target=new THREE.Vector3(next.x,1.45,next.z)
+    const target=new THREE.Vector3(next.x,1.45-.47*(next.submersion||0),next.z)
     const cameraLerp=1-Math.exp(-5*smoothDt)
     if(cameraMode==='aerial'){
       const desired=new THREE.Vector3(next.x,33,next.z+2)
@@ -242,6 +250,11 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, phase
         visited:next.visited||[],collected:next.collected||[],
         metVillagers:next.metVillagers||[],
         nearbyVillager:mode==='explore'?(()=>{const person=nearbyVillager(villagerRef.current,next);return person?{name:person.name,role:person.role}:null})():null,
+        weather:weatherClockRef.current.label,worldTime:weatherClockRef.current.time,
+        rain:weatherClockRef.current.rain,snow:weatherClockRef.current.snow,
+        windSpeed:weatherClockRef.current.windSpeed,daylight:weatherClockRef.current.daylight,
+        inWater:!!next.inWater,waterTimer:next.waterTimer||0,
+        submersion:next.submersion||0,waterId:next.waterId||null,
       })
     }
   })
@@ -261,7 +274,7 @@ function LoadedLevel(props){
   const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES]:objects,[props.mode,objects])
   const npcRef=useRef(makeNpcs(props.mode))
   const villagerRef=useRef(makeVillagers())
-  const playerRef=useRef(initialRaceState())
+  const playerRef=props.environmentPlayerRef
   // Only the High preset renders real-time shadow maps on mobile GPUs.
   useEffect(()=>{
     track.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows && (child.name.startsWith('CASTLE_')||child.name.includes('crown')||child.name.includes('hood'))})
@@ -271,6 +284,7 @@ function LoadedLevel(props){
   return <>
     <primitive object={track} />
     <OpenWorldDecor />
+    <WaterWorld clockRef={props.weatherClockRef} playerRef={playerRef} phase={props.phase} mode={props.mode}/>
     <NpcActors key={props.mode} npcRef={npcRef} playerRef={playerRef} kartSource={kart} mode={props.mode} />
     {props.mode==='explore' && <VoxelVillagers villagerRef={villagerRef} playerRef={playerRef} mode={props.mode} phase={props.phase} />}
     {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
@@ -283,16 +297,17 @@ function LoadedLevel(props){
 
 export default function RacingScene(props){
   const budget=props.budget
+  const weatherClockRef=useRef(environmentAt(0))
+  const environmentPlayerRef=useRef(initialRaceState())
   return <Canvas className="game-canvas" shadows={budget.shadows} dpr={budget.dpr}
     camera={{position:[10,9,29],fov:54,near:.1,far:420}}
     gl={{alpha:false,antialias:budget.antialias,powerPreference:'high-performance',stencil:false}}>
     <color attach="background" args={['#adcee1']} />
     <fog attach="fog" args={['#adcee1',135,230]} />
-    <ambientLight intensity={1.75} />
-    <hemisphereLight args={['#e6f6ff','#619768',1.05]} />
-    <directionalLight castShadow={budget.shadows} position={[-22,38,12]} intensity={2.2} shadow-mapSize-width={budget.shadowMap} shadow-mapSize-height={budget.shadowMap} shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45} shadow-bias={-.00015} />
+    <SkyAndWeather clockRef={weatherClockRef} phase={props.phase} previewRequest={props.weatherPreviewRequest} budget={budget}/>
+    <WeatherParticles clockRef={weatherClockRef} playerRef={environmentPlayerRef} phase={props.phase} budget={budget}/>
     <React.Suspense fallback={null}>
-      <LoadedLevel {...props} />
+      <LoadedLevel {...props} weatherClockRef={weatherClockRef} environmentPlayerRef={environmentPlayerRef} />
     </React.Suspense>
   </Canvas>
 }

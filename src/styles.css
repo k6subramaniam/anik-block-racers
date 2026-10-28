@@ -302,3 +302,35 @@ button{touch-action:manipulation;cursor:pointer}
  .villager-talk-button{max-width:30vw;min-width:130px;bottom:max(4px,env(safe-area-inset-bottom));padding:4px 6px;font-size:10px}
  .villager-talk-button small{display:none}
 }
+
+/* v2.3 — Responsive weather and water hazard telemetry, outside thumb lanes. */
+.weather-hud{position:absolute;z-index:3;top:112px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;max-width:230px;padding:7px 11px;border:1px solid rgba(151,220,241,.50);border-radius:12px;background:rgba(10,26,38,.85);box-shadow:0 4px 24px #0007;color:#eafaff;white-space:nowrap;pointer-events:none;backdrop-filter:blur(9px)}
+.weather-hud.night{background:rgba(8,18,38,.9);border-color:rgba(120,150,245,.55)}
+.weather-hud .weather-glyph{color:#9de7ff;display:flex}
+.weather-hud strong{font:900 14px 'Barlow Condensed',sans-serif;letter-spacing:1.1px}
+.weather-time{display:flex;align-items:center;gap:4px;font:700 11px 'DM Sans',sans-serif;color:#e2f2ff}
+.weather-hud small{font:700 9px 'DM Sans',sans-serif;color:#b4d6dd}
+.water-hud{position:absolute;z-index:4;top:156px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:7px 12px;background:rgba(7,57,88,.88);border:1px solid #83e9ff;border-radius:9px;color:#e1faff;box-shadow:0 3px 20px #001626aa;white-space:nowrap;font-size:10px}
+.water-hud strong{font:900 14px 'Barlow Condensed',sans-serif;letter-spacing:.6px}
+.water-hud span{font-size:10px}
+.weather-preview-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:6px 0}
+.weather-preview-actions button{min-height:34px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid #87bad2;border-radius:7px;background:rgba(34,81,101,.63);color:#e2f9ff;font:850 11px 'DM Sans',sans-serif}
+.lake-map-heading{display:flex;align-items:center;gap:6px;margin:5px 0 2px;font-size:11px;letter-spacing:1px;font-weight:900;color:#88ebfa}
+.water-map-place{border-color:rgba(101,214,247,.3)}
+@media (pointer:coarse) and (orientation:landscape){
+ .weather-hud{top:52px;gap:5px;padding:5px 8px;max-width:170px;font-size:10px}
+ .weather-hud strong{font-size:11px}.weather-hud small{display:none}.weather-hud .weather-glyph svg{width:14px;height:14px}.weather-time{font-size:9px}
+ .water-hud{top:86px;padding:5px 8px}.water-hud strong{font-size:11px}.water-hud span{font-size:9px}
+ .weather-preview-actions{gap:5px;margin:4px 0}.weather-preview-actions button{min-height:28px;font-size:9px}
+ .lake-map-heading{margin:4px 0 0;font-size:9px}
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-width:820px){
+ .weather-hud{left:49%;top:117px}
+ .water-hud{top:148px}
+}
+@media (pointer:coarse) and (orientation:portrait){
+ .weather-hud{top:calc(85px + env(safe-area-inset-top));left:63%;max-width:175px;padding:5px 7px;gap:5px}
+ .weather-hud strong{font-size:12px}.weather-hud small{display:none}
+ .water-hud{top:calc(134px + env(safe-area-inset-top));left:50%}
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:345px){.weather-hud{top:47px}.water-hud{top:79px}}

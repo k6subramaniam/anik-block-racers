@@ -3,6 +3,7 @@
  * their gameplay locations without coupling deterministic tests to WebGL.
  */
 import { moveKart, SPAWN } from './simulation.js'
+import {advanceWater, WATER_DESTINATIONS, WATER_BODIES} from './water.js'
 
 export const WORLD_BOUNDS = Object.freeze({minX:-151,maxX:151,minZ:-126,maxZ:126})
 export const EXPLORE_SPAWN = Object.freeze({x:5,z:-37,yaw:0})
@@ -72,23 +73,26 @@ export function initialExploreState(){
   return {
     ...EXPLORE_SPAWN,speed:0,elapsed:0,lap:1,checkpoint:0,bestLap:null,lastLapStart:0,
     collisions:0,event:null,coins:0,boostTimer:0,boostCooldown:0,
+    inWater:false,waterId:null,waterTimer:0,submersion:0,waterDepth:0,
     collected:[],visited:[],metVillagers:[],zoneName:'VOXEL WILDS',portalCooldown:0,
   }
 }
 
 export function fastTravel(state,zoneId){
-  const dest=ZONES.find(z=>z.id===zoneId)
+  const dest=[...ZONES,...WATER_DESTINATIONS].find(z=>z.id===zoneId)
   if(!dest)return state
-  return {...state,...dest.spawn,speed:0,event:'travel',portalCooldown:3,zoneName:dest.name}
+  return {...state,...dest.spawn,speed:0,event:'travel',portalCooldown:3,zoneName:dest.name,
+    inWater:false,waterTimer:0,submersion:0,waterDepth:0,waterId:null}
 }
 
 /** Move in free-roam only. Never modifies race/lap progress. */
-export function advanceExplore(state,input,dt,obstacles=[]){
+export function advanceExplore(state,input,dt,obstacles=[],weather=null){
   const delta=Math.min(Math.max(0,dt),.05)
-  const moved=moveKart(state,input,delta,obstacles,{mode:'explore',bounds:WORLD_BOUNDS})
-  let next={...moved,elapsed:state.elapsed+delta,portalCooldown:Math.max(0,(state.portalCooldown||0)-delta)}
+  const moved=moveKart(state,input,delta,obstacles,{mode:'explore',bounds:WORLD_BOUNDS,weather})
+  let next=advanceWater({...moved,elapsed:state.elapsed+delta,portalCooldown:Math.max(0,(state.portalCooldown||0)-delta)},delta)
   const region=zoneAt(next)
-  next.zoneName=region?.name||'VOXEL WILDS'
+  const nearWater=WATER_BODIES.find(w=>Math.hypot((next.x-w.x)/w.rx,(next.z-w.z)/w.rz)<1.55)
+  next.zoneName=region?.name||nearWater?.name||'VOXEL WILDS'
   if(region && !state.visited.includes(region.id)){
     next.visited=[...state.visited,region.id]
     next.event='discovery'

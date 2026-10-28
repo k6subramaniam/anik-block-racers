@@ -31,20 +31,28 @@ export function moveKart(state, input, delta, obstacles = [], options = {}) {
   const gas = Number(!!input.forward) - Number(!!input.backward)
   const steering = Number(!!input.right) - Number(!!input.left)
   const drifting = !!input.drift
+  const weather = options.weather || {}
+  const traction = Math.max(.5, Math.min(1, weather.traction ?? 1))
+  const braking = Math.max(.5, Math.min(1, weather.braking ?? 1))
+  const waterDrive = state.inWater ? .25 : 1
 
-  if(gas === 1) speed += (speed < 0 ? 24 : 13.0)*dt
-  else if(gas === -1) speed -= (speed > 0 ? 26 : 9.0)*dt
+  if(gas === 1) speed += (speed < 0 ? 24 : 13.0)*dt*traction*waterDrive
+  else if(gas === -1) speed -= (speed > 0 ? 26 : 9.0)*dt*braking*waterDrive
   else {
-    const decel = (2.9 + speed*speed*.009)*dt
+    const decel = (2.9 + speed*speed*.009)*dt*traction
     speed = Math.abs(speed) <= decel ? 0 : speed - Math.sign(speed)*decel
   }
   speed = Math.max(MAX_REVERSE,Math.min(state.boostTimer > 0 ? MAX_SPEED + 7 : MAX_SPEED,speed))
   const turnStrength = Math.min(1, Math.abs(speed)/10)
   const reverse = speed < 0 ? -1 : 1
   const turnRate = (drifting ? 2.05 : 1.37) * (.35 + .65*turnStrength)
-  const yaw = state.yaw - steering*turnRate*dt*reverse
+  const yaw = state.yaw - steering*turnRate*dt*reverse*traction
   let x = state.x - Math.sin(yaw)*speed*dt
   let z = state.z - Math.cos(yaw)*speed*dt
+  // Lateral gusts displace light karts; geometry constraints below still apply.
+  const windInfluence = (.09 + Math.abs(speed)*.011)*(state.inWater ? .15 : 1)
+  x += (weather.windX||0)*dt*windInfluence
+  z += (weather.windZ||0)*dt*windInfluence
   let event=null
   let collisions = state.collisions
 
@@ -92,9 +100,9 @@ export function moveKart(state, input, delta, obstacles = [], options = {}) {
   return {...state,x,z,yaw,speed,collisions,event}
 }
 
-export function advanceKart(state, input, dt, obstacles=[]) {
+export function advanceKart(state, input, dt, obstacles=[], weather=null) {
   // Race clock advances only when actively racing; pause/countdown call moveKart no-op.
-  const moved=moveKart(state,input,dt,obstacles)
+  const moved=moveKart(state,input,dt,obstacles,{weather})
   const elapsed=state.elapsed + Math.max(0,Math.min(dt,.05))
   const stepped=stepRace({ ...moved, elapsed }, state, moved)
   return { ...stepped, event: stepped.event || moved.event }

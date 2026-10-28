@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Living Voxel World",
+  "name": "ANIK Block Racers — Dynamic Weather World",
   "short_name": "ANIK Racers",
-  "description": "Race AI karts and roam six original voxel districts, including Blockhaven Village with 12 walking friendly AI villagers, block buildings and discoveries.",
+  "description": "Drive into three animated lakes with splash and sinking physics; live changing day/night and rain, snow, wind weather in six voxel districts.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",

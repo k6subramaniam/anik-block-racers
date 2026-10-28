@@ -1,4 +1,4 @@
-# ANIK Block Racers — AI Rivals & Voxel Wildlife (Open World v2.1) (v2.0)
+# ANIK Block Racers — Water & Dynamic Weather v2.3
 
 **Real playable 3D world** for Samsung Galaxy and modern Android browsers. Based on the original Higgsfield 3D Jutsu asset scene, updated with five themed zones and connecting roads. The game remains an original voxel racer, not a Minecraft/Mojang product.
 
@@ -82,3 +82,14 @@ This is a **bounded** open-world prototype, not an infinite Minecraft map. Terra
 - There are now six discovery districts and six relics. Three-lap race mode, AI rival karts, voxel animal bots, ramming effects and Samsung PWA controls remain.
 - Villagers are friendly and invulnerable; only the fantasy kart and creature bots use the arcade knockout system.
 - This is an original block-world game and is not officially affiliated with Minecraft or Mojang.
+
+
+## v2.3 — Drive into water and dynamic weather
+
+- **Three playable open-world lakes**: Blockhaven Pond, Crystal Lake and Blue Lagoon. Open the map and choose a water destination; the spawn pad faces the lake. Accelerate to enter the water. An arcade splash ring appears, hydrodynamic drag slows the kart, and it submerges. If you stay in deep water for about **4 seconds**, automatic rescue places you on a safe shore. Driving back out before rescue allows the kart to surface. This is stylized, deterministic gameplay physics, not a full Navier–Stokes fluid simulation.
+- **Day/night**: the simulated clock starts at 08:00 and moves gradually through noon, dusk, night and sunrise, completing a day in roughly **9 minutes** of gameplay. Solar lighting, moonlight, sky hue and fog respond continuously; the clock stops while paused.
+- **Four weather phases**: clear → rain → snow → windy, repeating. Each phase lasts about **55 seconds**, with smooth ten-second transitions. Rain makes roads slick, snow reduces traction and braking, and wind gusts physically push the kart. Low-cost 3D rain and snow particles plus animated lake ripples vary with the conditions.
+- **Weather HUD** shows game time, current phase and wind speed. In **Settings**, NEXT WEATHER and PREVIEW NIGHT skip forward for demonstrations; automatic progression remains enabled.
+- **Samsung-friendly**: low-cost geometry; particle counts are reduced automatically on ECO. All existing AI rivals, villages, NPC conversations, touch controls and 3-lap racing remain available.
+
+**Testing**: `npm test` verifies pure water, weather, racing and exploration logic. The GitHub Pages workflow also runs a production Vite build. Actual phone FPS, water visuals and battery usage should be checked on the Galaxy device after deployment.

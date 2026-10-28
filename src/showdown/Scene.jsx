@@ -1,4 +1,4 @@
-import React,{Suspense,useEffect,useMemo,useRef} from 'react'
+import React,{Suspense,useEffect,useLayoutEffect,useMemo,useRef} from 'react'
 import {Canvas,useFrame} from '@react-three/fiber'
 import {useGLTF} from '@react-three/drei'
 import * as THREE from 'three'
@@ -70,7 +70,7 @@ function Arena({arena}){
     </mesh>
     <Cube at={[0,-.7,0]} size={[125,1.3,125]} color="#5c8546"/>
     <BlockBatch items={blocks} color="#c8fa58"/>
-    {arena.ramps.map(r=><Ramp key={r.id} r={r} map={block}/>) }
+    {arena.ramps.map(r=><Ramp key={r.id} r={r} map={block}/>)}
     {arena.boosts.map(b=><group key={b.id} position={[b.x,.03,b.z]}>
       <Cube at={[0,0,0]} size={[4,.1,3]} color="#2fc5ce"/>
       {[-1,0,1].map(n=><Cube key={n} at={[n,.09,0]} size={[.45,.08,2]} color="#edff90"/>)}
@@ -110,6 +110,16 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
   const kartRoot=useRef(),robots=useRef({}),bursts=useRef({}),hudTime=useRef(0),sun=useRef()
   const envRef=useRef(showdownWeather(arena,0)),playerRef=useRef(engineRef.current.state.player)
   const scratch=useMemo(()=>({target:new THREE.Vector3(),position:new THREE.Vector3(),sky:new THREE.Color()}),[])
+  // Commit the exact fixed-tick clock before the paused view is painted.
+  // The normal 10 Hz HUD refresh must not settle by 0.1s after pause/blur.
+  useLayoutEffect(()=>{
+    if(phase!=='paused')return
+    const engine=engineRef.current,s=engine.state,env=showdownWeather(engine.arena,s.ticks)
+    onHud({remaining:Math.max(0,60-s.ticks/60),score:s.score,combo:s.combo,
+      bestCombo:s.bestCombo,smashes:s.smashes,jumps:s.jumps,speed:s.player.speed,
+      weather:env.label,notice:engine.notice})
+    hudTime.current=0
+  },[phase,onHud,engineRef])
   useFrame(({camera,scene},rawDt)=>{
     const engine=engineRef.current
     const dt=Math.min(.25,Math.max(0,rawDt))
@@ -194,7 +204,7 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
     <directionalLight ref={sun} position={[-15,36,22]} intensity={2.1} castShadow={budget.shadows} shadow-mapSize={[512,512]} shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45}/>
     <Arena arena={arena}/>
     <group ref={kartRoot}><primitive object={kart.model} dispose={null}/></group>
-    {arena.bots.map(def=><Robot key={def.id} def={def} rootRef={node=>{robots.current[def.id]=node}} burstRef={node=>{bursts.current[def.id]=node}}/>) }
+    {arena.bots.map(def=><Robot key={def.id} def={def} rootRef={node=>{robots.current[def.id]=node}} burstRef={node=>{bursts.current[def.id]=node}}/>)}
     <WeatherParticles clockRef={envRef} playerRef={playerRef} phase={phase==='running'||phase==='replay'||phase==='exporting'?'racing':'paused'} budget={budget}/>
   </>
 }

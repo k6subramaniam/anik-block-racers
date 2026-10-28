@@ -299,12 +299,14 @@ export default function RacingScene(props){
   const budget=props.budget
   const weatherClockRef=useRef(environmentAt(0))
   const environmentPlayerRef=useRef(initialRaceState())
+  const setHud=props.setHud
+  const weatherPreviewHud=React.useCallback(env=>setHud(old=>({...old,worldTime:env.time,weather:env.label,daylight:env.daylight,windSpeed:env.windSpeed})),[setHud])
   return <Canvas className="game-canvas" shadows={budget.shadows} dpr={budget.dpr}
     camera={{position:[10,9,29],fov:54,near:.1,far:420}}
     gl={{alpha:false,antialias:budget.antialias,powerPreference:'high-performance',stencil:false}}>
     <color attach="background" args={['#adcee1']} />
     <fog attach="fog" args={['#adcee1',135,230]} />
-    <SkyAndWeather clockRef={weatherClockRef} phase={props.phase} previewRequest={props.weatherPreviewRequest} budget={budget}/>
+    <SkyAndWeather clockRef={weatherClockRef} phase={props.phase} previewRequest={props.weatherPreviewRequest} budget={budget} onWeatherPreview={weatherPreviewHud}/>
     <WeatherParticles clockRef={weatherClockRef} playerRef={environmentPlayerRef} phase={props.phase} budget={budget}/>
     <React.Suspense fallback={null}>
       <LoadedLevel {...props} weatherClockRef={weatherClockRef} environmentPlayerRef={environmentPlayerRef} />

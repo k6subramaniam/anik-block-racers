@@ -14,7 +14,7 @@ const skyShade=new THREE.Color()
 /** Each scene owns its own simulation clock. The weather and the lighting are
  * synchronized without re-rendering the React tree every animation frame.
  */
-export function SkyAndWeather({clockRef,phase,previewRequest,budget}){
+export function SkyAndWeather({clockRef,phase,previewRequest,budget,onWeatherPreview}){
   const {scene}=useThree()
   const sun=useRef(),moon=useRef(),ambient=useRef(),hemi=useRef()
   const requestId=useRef(null)
@@ -24,7 +24,8 @@ export function SkyAndWeather({clockRef,phase,previewRequest,budget}){
     const t=clockRef.current.seconds||0
     clockRef.current.seconds=previewRequest.kind==='night' ? nextNightTime(t) : nextWeatherTime(t)
     clockRef.current=environmentAt(clockRef.current.seconds)
-  },[clockRef,previewRequest])
+    onWeatherPreview?.(clockRef.current)
+  },[clockRef,previewRequest,onWeatherPreview])
   useFrame((_,dt)=>{
     const isPlaying=phase==='exploring'||phase==='racing'
     const t=(clockRef.current.seconds||0)+(isPlaying?Math.min(.07,Math.max(0,dt)):0)
@@ -136,11 +137,13 @@ export function WaterWorld({clockRef,playerRef,phase,mode}){
 export function WeatherParticles({clockRef,playerRef,phase,budget}){
   const rainCount=budget.tier==='eco'?70:budget.tier==='high'?200:120
   const snowCount=budget.tier==='eco'?45:budget.tier==='high'?125:75
-  const rain=useRef(),snow=useRef()
-  const {rainGeo,snowGeo,initialRain,initialSnow}=useMemo(()=>{
+  const windCount=budget.tier==='eco'?26:budget.tier==='high'?80:50
+  const rain=useRef(),snow=useRef(),windRef=useRef()
+  const {rainGeo,snowGeo,windGeo}=useMemo(()=>{
     const rand=(seed=>()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296})(1987)
     const rainy=new Float32Array(rainCount*6)
     const snowing=new Float32Array(snowCount*3)
+    const windy=new Float32Array(windCount*6)
     for(let i=0;i<rainCount;i++){
       const p=i*6
       rainy[p]=(rand()-.5)*45;rainy[p+1]=rand()*21+1;rainy[p+2]=(rand()-.5)*45
@@ -150,20 +153,27 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
       const p=i*3
       snowing[p]=(rand()-.5)*44;snowing[p+1]=rand()*18+1;snowing[p+2]=(rand()-.5)*44
     }
-    const rg=new THREE.BufferGeometry(),sg=new THREE.BufferGeometry()
+    for(let i=0;i<windCount;i++){
+      const k=i*6
+      windy[k]=(rand()-.5)*46;windy[k+1]=rand()*7+1;windy[k+2]=(rand()-.5)*46
+      windy[k+3]=windy[k]+1;windy[k+4]=windy[k+1];windy[k+5]=windy[k+2]+.3
+    }
+    const rg=new THREE.BufferGeometry(),sg=new THREE.BufferGeometry(),wg=new THREE.BufferGeometry()
     rg.setAttribute('position',new THREE.BufferAttribute(rainy,3))
     sg.setAttribute('position',new THREE.BufferAttribute(snowing,3))
-    return {rainGeo:rg,snowGeo:sg,initialRain:rainy,initialSnow:snowing}
-  },[rainCount,snowCount])
-  useEffect(()=>()=>{rainGeo.dispose();snowGeo.dispose()},[rainGeo,snowGeo])
+    wg.setAttribute('position',new THREE.BufferAttribute(windy,3))
+    return {rainGeo:rg,snowGeo:sg,windGeo:wg}
+  },[rainCount,snowCount,windCount])
+  useEffect(()=>()=>{rainGeo.dispose();snowGeo.dispose();windGeo.dispose()},[rainGeo,snowGeo,windGeo])
   useFrame((_,dt)=>{
     const env=clockRef.current,active=phase==='racing'||phase==='exploring'
-    const r=rain.current,s=snow.current
-    if(!r||!s)return
+    const r=rain.current,s=snow.current,w=windRef.current
+    if(!r||!s||!w)return
     r.visible=active&&env.rain>.03
     s.visible=active&&env.snow>.03
+    w.visible=active&&env.wind>.06
     const p=playerRef.current||{x:0,z:0}
-    r.position.set(p.x,0,p.z);s.position.set(p.x,0,p.z)
+    r.position.set(p.x,0,p.z);s.position.set(p.x,0,p.z);w.position.set(p.x,0,p.z)
     const step=Math.min(.06,dt)
     if(r.visible){
       const a=rainGeo.attributes.position.array
@@ -186,13 +196,31 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
       }
       snowGeo.attributes.position.needsUpdate=true
     }
+    if(w.visible){
+      const a=windGeo.attributes.position.array
+      const norm=Math.max(.0001,Math.hypot(env.windX,env.windZ))
+      const dirX=env.windX/norm,dirZ=env.windZ/norm
+      for(let i=0;i<windCount;i++){
+        const k=i*6
+        a[k]+=env.windX*step*2.8;a[k+2]+=env.windZ*step*2.8
+        a[k]=((a[k]+25)%50+50)%50-25
+        a[k+2]=((a[k+2]+25)%50+50)%50-25
+        a[k+3]=a[k]+dirX*(1.1+env.windSpeed*.12)
+        a[k+4]=a[k+1]+.1*Math.sin(env.seconds*2+i)
+        a[k+5]=a[k+2]+dirZ*(1.1+env.windSpeed*.12)
+      }
+      windGeo.attributes.position.needsUpdate=true
+    }
   })
-  return <group name="DYNAMIC_RAIN_SNOW_PARTICLES">
+  return <group name="DYNAMIC_WEATHER_PARTICLES">
     <lineSegments ref={rain} geometry={rainGeo} visible={false} frustumCulled={false}>
       <lineBasicMaterial color="#b6efff" transparent opacity={.76} depthWrite={false}/>
     </lineSegments>
     <points ref={snow} geometry={snowGeo} visible={false} frustumCulled={false}>
       <pointsMaterial color="#f5fcff" size={.27} transparent opacity={.9} depthWrite={false}/>
     </points>
+    <lineSegments ref={windRef} geometry={windGeo} visible={false} frustumCulled={false}>
+      <lineBasicMaterial color="#d3eac1" transparent opacity={.5} depthWrite={false}/>
+    </lineSegments>
   </group>
 }

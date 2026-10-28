@@ -33,5 +33,5 @@ Reviewed October 25, 2026.
 
 ## v2.3 water and weather checks
 - Pure simulation: water entering/splash-once, drag/submersion, resurfacing, auto-rescue, lake-safe fast travel, wet and snowy driving grip, wind forces, all 4 weather phases and day-night time progression.
-- Samsung: particle budget Eco 70 rain/45 snow, Balanced 120/75, High 200/125. No high-poly terrain or volumetric fluid simulations.
+- Samsung: particle budget Eco 70 rain/45 snow/26 wind, Balanced 120/75/50, High 200/125/80. No high-poly terrain or volumetric fluid simulations.
 - Real-device FPS and heat: not measured in the automated runner; verify on physical Galaxy hardware after deployment.

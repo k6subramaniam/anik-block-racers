@@ -54,7 +54,7 @@ function TrackPreview({track,actors=[]}){
   },[track])
   return <svg viewBox={data.box} role="img" aria-label={`${track.name} circuit layout`}><polygon points={data.points} fill="none" stroke="#17303c" strokeWidth={track.width+3}/><polygon points={data.points} fill="none" stroke={track.color} strokeWidth="3"/>
     <circle cx={track.path[0].x} cy={track.path[0].z} r="5" fill="white"/>
-    {actors.map(a=><circle key={a.id} cx={a.x} cy={a.y===undefined?a.z:a.z} r={a.id==='player'?5.5:3.5} fill={a.color} stroke="#10242e" strokeWidth="1.5"/>)}</svg>
+    {actors.map(a=><circle key={a.id} cx={a.x} cy={a.z} r={a.id==='player'?5.5:3.5} fill={a.color} stroke="#10242e" strokeWidth="1.5"/>)}</svg>
 }
 export default function BattleGame({onExit}){
   const [trackId,setTrackId]=useState(()=>{const id=new URLSearchParams(location.search).get('track');return BATTLE_TRACKS.some(t=>t.id===id)?id:'blast'})
@@ -108,7 +108,7 @@ export default function BattleGame({onExit}){
   const openSettings=()=>{controls.reset();if(phase==='racing')setPhase('paused');if(phase==='countdown')setPhase('lobby');setSettings(true)}
   const event=hud.notice&&hud.notice.until>hud.tick?hud.notice:null
   const eventText=event?.kind==='damage'?`BLAST HIT −${event.damage} ARMOR`:event?.kind==='knockout'?'KART DISABLED':event?.kind==='repair'?'+40 ARMOR REPAIR':event?.kind==='lap'?'LAP COMPLETE':event?.kind==='deploy'?(event.type==='bomb'?'BOMB THROWN':'MINE DROPPED'):null
-  return <div className={`battle-game br-${phase}`} data-testid="battle-game" data-track={trackId} data-phase={phase}>
+  return <div className={`battle-game br-phase-${phase}`} data-testid="battle-game" data-track={trackId} data-phase={phase}>
     <div className="br-world"><Boundary><BattleScene engineRef={engineRef} inputRef={inputRef} phase={phase} track={track} budget={budget} cameraMode={camera} reduced={reduced} onReady={setReady} onHud={setHud} onFinish={finish}/></Boundary></div>
     <header className="br-header"><button className="br-brand" onClick={()=>{controls.reset();onExit()}} aria-label="Back to ANIK game modes"><span>A</span><b>ANIK <small>BATTLE RACE</small></b></button><span className="br-track-label">{track.name} · {track.weather}</span><nav><button onClick={()=>setCamera(c=>c==='chase'?'aerial':'chase')} aria-label="Change battle camera"><Camera/></button><button onClick={openSettings} aria-label="Battle graphics settings"><Settings2/></button><button onClick={pause} disabled={!['racing','paused'].includes(phase)} aria-label="Pause or resume battle" data-testid="battle-pause">{phase==='paused'?<Play/>:<Pause/>}</button></nav></header>
     {phase!=='lobby'&&phase!=='results'&&<>

@@ -61,6 +61,9 @@ test('all three race tracks render, have driving controls, and fit phone and des
     await page.setViewportSize(size)
     await expect(page.getByTestId('battle-start')).toBeVisible()
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)
+    const bounds=await page.getByTestId('battle-game').boundingBox()
+    expect(bounds.width).toBe(size.width);expect(bounds.height).toBe(size.height)
+    expect(bounds.x).toBe(0);expect(bounds.y).toBe(0)
     await screenshot(page,info,`battle-layout-${size.width}`)
   }
   expect(errors).toEqual([])

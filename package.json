@@ -1,14 +1,15 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "2.4.0",
+  "version": "3.0.0",
   "type": "module",
-  "description": "Original Minecraft-inspired voxel graphics: 16-pixel procedural textures, block trees, stepped cliffs and cubic clouds with Samsung GPU instancing",
+  "description": "ANIK Bot Smash Showdown: 60-second seeded challenges, 5x combos, actual gameplay replays, vertical clip export and friend links",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test src/tests/*.test.js"
+    "test": "node --test src/tests/*.test.js",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@react-three/drei": "^10.5.0",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
-    "vite": "^6.3.0"
+    "vite": "^6.3.0",
+    "@playwright/test": "1.56.1"
   }
 }

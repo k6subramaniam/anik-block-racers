@@ -1,0 +1,103 @@
+import {test,expect} from '@playwright/test'
+import fs from 'node:fs'
+const CODE='sd1-d20261028'
+async function open(page,path=''){
+  await page.goto(`./${path}`)
+  await expect(page.getByTestId('sd-start')).toBeEnabled({timeout:60_000})
+  await expect(page.locator('canvas')).toHaveCount(1)
+}
+async function snap(page,testInfo,name){await page.screenshot({path:testInfo.outputPath(name+'.png'),animations:'disabled'})}
+
+test('actual 60-second run -> high score -> replay -> vertical video -> friend link',async({page,context},info)=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message))
+ // Test the real clipboard fallback without sending anything to an outside app.
+ await context.grantPermissions(['clipboard-read','clipboard-write'])
+ await page.addInitScript(()=>{Object.defineProperty(navigator,'share',{value:undefined,configurable:true})})
+ await open(page,`?challenge=${CODE}&score=10`)
+ await expect(page.getByTestId('sd-invite')).toContainText('BEAT 10')
+ await snap(page,info,'01-galaxy-lobby')
+ await page.getByTestId('sd-start').click()
+ await expect(page.getByTestId('sd-touch-forward')).toBeVisible({timeout:15_000})
+ await page.keyboard.down('w');await page.waitForTimeout(12000);await page.keyboard.up('w')
+ await expect(page.getByTestId('sd-score')).not.toHaveText('0')
+ await snap(page,info,'02-running-score')
+ await page.getByTestId('sd-pause').click()
+ const paused=await page.getByTestId('sd-time').innerText();await page.waitForTimeout(1000)
+ await expect(page.getByTestId('sd-time')).toHaveText(paused)
+ await page.getByTestId('sd-resume').click()
+ await expect(page.getByTestId('sd-results')).toBeVisible({timeout:170_000})
+ await snap(page,info,'03-result')
+ const score=Number((await page.getByTestId('sd-result-score').innerText()).replaceAll(',',''));expect(score).toBeGreaterThan(0)
+ const rows=await page.evaluate(()=>JSON.parse(localStorage.getItem('anik-showdown-scores-v1')||'[]'))
+ expect(rows).toHaveLength(1);expect(rows[0].ticks).toBe(3600);expect(rows[0].score).toBe(score)
+ await page.getByTestId('sd-share').click()
+ const url=await page.evaluate(()=>navigator.clipboard.readText())
+ expect(new URL(url).searchParams.get('challenge')).toBe(CODE);expect(new URL(url).searchParams.get('score')).toBe(String(score))
+ await page.getByTestId('sd-replay').click()
+ await expect(page.getByTestId('sd-stop-replay')).toBeVisible()
+ await page.waitForTimeout(1200);await snap(page,info,'04-actual-gameplay-replay')
+ await expect(page.getByTestId('sd-results')).toBeVisible({timeout:25_000})
+ await page.getByTestId('sd-export').click()
+ await expect(page.getByTestId('sd-clip-ready')).toBeVisible({timeout:60_000})
+ const videoWait=page.waitForEvent('download');await page.getByTestId('sd-download-clip').click();const video=await videoWait
+ const videoPath=info.outputPath(video.suggestedFilename());await video.saveAs(videoPath)
+ expect(fs.statSync(videoPath).size).toBeGreaterThan(1000)
+ const pngWait=page.waitForEvent('download');await page.getByTestId('sd-card').click();const png=await pngWait
+ const pngPath=info.outputPath(png.suggestedFilename());await png.saveAs(pngPath)
+ const bytes=fs.readFileSync(pngPath);expect(bytes.subarray(1,4).toString()).toBe('PNG');expect(bytes.readUInt32BE(16)).toBe(540);expect(bytes.readUInt32BE(20)).toBe(960)
+ await page.getByTestId('sd-board').click();await expect(page.locator('.sd-scores li')).toHaveCount(1)
+ await expect(page.locator('.sd-board-scope')).toContainText('not a global leaderboard')
+ await snap(page,info,'05-device-scores')
+ await page.goto(url);await expect(page.getByTestId('sd-start')).toBeEnabled({timeout:30_000})
+ await expect(page.getByTestId('sd-invite')).toContainText(score.toLocaleString())
+ expect(errors).toEqual([])
+ console.log('SHOWDOWN_LIFECYCLE',JSON.stringify({score,ticks:rows[0].ticks,videoBytes:fs.statSync(videoPath).size,pngSize:[540,960],errors}))
+})
+
+test('touch release, background pause, compact layouts and original modes',async({page},info)=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message))
+ await open(page,`?challenge=${CODE}`)
+ await page.getByTestId('sd-start').click();await expect(page.getByTestId('sd-touch-forward')).toBeVisible({timeout:15_000})
+ await page.getByTestId('sd-touch-forward').dispatchEvent('pointerdown',{pointerId:11,pointerType:'touch'})
+ await page.getByTestId('sd-touch-left').dispatchEvent('pointerdown',{pointerId:12,pointerType:'touch'})
+ await page.waitForTimeout(1200)
+ await expect(page.getByTestId('sd-touch-forward')).toHaveAttribute('data-held','yes')
+ await page.getByTestId('sd-touch-forward').dispatchEvent('pointercancel',{pointerId:11})
+ await page.getByTestId('sd-touch-left').dispatchEvent('pointercancel',{pointerId:12})
+ await expect(page.getByTestId('sd-touch-forward')).not.toHaveAttribute('data-held','yes')
+ await page.evaluate(()=>window.dispatchEvent(new Event('blur')))
+ await expect(page.getByTestId('sd-resume')).toBeVisible()
+ const time=await page.getByTestId('sd-time').innerText();await page.waitForTimeout(600);await expect(page.getByTestId('sd-time')).toHaveText(time)
+ await page.getByRole('button',{name:'Return to original race and open world'}).click()
+ await expect(page.getByTestId('start-explore')).toBeEnabled({timeout:60_000})
+ await page.getByTestId('start-explore').click();await expect(page.getByTestId('touch-forward')).toBeVisible()
+ await page.getByTestId('open-map').click();await expect(page.getByTestId('travel-village')).toBeVisible();await page.getByTestId('travel-village').click()
+ await snap(page,info,'06-preserved-blockhaven')
+ await page.getByTestId('switch-mode').click();await expect(page.locator('.countdown-overlay')).toBeVisible()
+ await page.getByTestId('back-to-showdown').click();await expect(page.getByTestId('sd-start')).toBeEnabled()
+ for(const viewport of [{width:780,height:330},{width:360,height:740},{width:1280,height:720}]){
+   await page.setViewportSize(viewport)
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBeTruthy()
+   await expect(page.getByTestId('sd-start')).toBeVisible();await snap(page,info,`07-layout-${viewport.width}`)
+ }
+ expect(errors).toEqual([])
+})
+
+test('daily seed, invalid link handling, local stats opt-in and offline launch',async({page,context},info)=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message))
+ await open(page,'?challenge=not-a-valid-seed&score=99999999')
+ await expect(page.locator('.sd-warning')).toBeVisible();await expect(page.getByTestId('sd-invite')).toHaveCount(0)
+ await page.getByTestId('sd-board').click();await page.locator('.sd-diagnostics summary').click()
+ const opt=page.getByLabel('Save local play statistics');await expect(opt).not.toBeChecked();await opt.check()
+ await page.getByRole('button',{name:'Close leaderboard'}).click()
+ await page.getByTestId('sd-start').click();await expect(page.getByTestId('sd-touch-forward')).toBeVisible({timeout:15_000})
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('anik-showdown-local-events-v1')).some(x=>x.event==='challenge_start'))).toBeTruthy()
+ await page.getByTestId('sd-pause').click()
+ await page.evaluate(()=>navigator.serviceWorker.ready)
+ await page.waitForFunction(async()=>{
+   const keys=await caches.keys();for(const k of keys){if(k.startsWith('anik-block-racers-model-')){const cache=await caches.open(k);if((await cache.keys()).length)return true}}return false
+ },null,{timeout:30_000})
+ await context.setOffline(true);await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByTestId('sd-start')).toBeEnabled({timeout:30_000})
+ await snap(page,info,'08-offline-lobby');await context.setOffline(false)
+ expect(errors).toEqual([])
+})

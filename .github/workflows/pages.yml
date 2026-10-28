@@ -1,21 +1,17 @@
 name: Build and publish Samsung Galaxy game
 on:
   push:
-    branches: [main]
+    branches: [main, feature/bot-smash-v3]
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,15 +19,38 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
-      - name: Verify race and Android support
+      - name: Verify game rules and Android support
         run: npm test
       - name: Build mobile PWA for the repository URL
         run: npm run build
         env:
           GITHUB_PAGES: 'true'
-      - uses: actions/configure-pages@v5
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Test real gameplay, replays, sharing and mobile layouts
+        run: npm run test:browser
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showdown-browser-evidence
+          path: test-results
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: dist
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4

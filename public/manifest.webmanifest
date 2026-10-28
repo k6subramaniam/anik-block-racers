@@ -1,64 +1,24 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Voxel Graphics Edition",
+  "name": "ANIK Block Racers — Bot Smash Showdown",
   "short_name": "ANIK Racers",
-  "description": "Original 16-pixel voxel racing, blocky forests and cubic clouds with dynamic weather, free roaming and living villagers.",
+  "description": "60-second voxel-car mayhem. Smash robots, launch off ramps and challenge friends. Original racing and open world included.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "fullscreen",
-    "standalone"
-  ],
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
   "background_color": "#101a20",
   "theme_color": "#101a20",
-  "categories": [
-    "games",
-    "entertainment"
-  ],
+  "categories": ["games", "entertainment"],
   "icons": [
-    {
-      "src": "./icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    {"src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "shortcuts": [
-    {
-      "name": "Explore the Open World",
-      "short_name": "Explore World",
-      "url": "./?source=shortcut-explore",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Race Voxel Valley",
-      "short_name": "Start Race",
-      "url": "./?source=shortcut",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
+    {"name": "Daily Bot Smash", "short_name": "Daily Smash", "url": "./?source=shortcut-showdown", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Explore the Open World", "short_name": "Explore World", "url": "./?source=shortcut-explore", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Race Voxel Valley", "short_name": "Start Race", "url": "./?source=shortcut", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]}
   ]
 }

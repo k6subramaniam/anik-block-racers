@@ -85,7 +85,7 @@ export function advanceNpcs(npcs,dt,player,mode='race') {
       const home=n.kind==='racer'
         ?mode==='race'?trackAt(n.travel,n.lane):along(PATHS[RIVALS.findIndex(x=>x.id===n.id)],PATROL_ARCS[RIVALS.findIndex(x=>x.id===n.id)],n.travel,n.lane)
         :{x:n.home.x,z:n.home.z,yaw:n.yaw}
-      return {...n,...home,health:n.maxHp,respawn:0,burst:0,stun:0,hitCooldown:1.35}
+      return {...n,...home,health:n.maxHp,respawn:0,burst:0,stun:0,hitCooldown:1.35,blastOffsetX:0,blastOffsetZ:0}
     }
     if(n.kind==='racer'){
       const i=RIVALS.findIndex(r=>r.id===n.id)
@@ -97,7 +97,8 @@ export function advanceNpcs(npcs,dt,player,mode='race') {
       const travel=n.travel+advance
       const wasLap=Math.floor(n.travel/pathLen),nowLap=Math.floor(travel/pathLen)
       const pose=along(path,arc,travel,n.lane)
-      return {...n,...pose,travel,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
+      const blastOffsetX=(n.blastOffsetX||0)*Math.exp(-step*4),blastOffsetZ=(n.blastOffsetZ||0)*Math.exp(-step*4)
+      return {...n,...pose,x:pose.x+blastOffsetX,z:pose.z+blastOffsetZ,blastOffsetX,blastOffsetZ,travel,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
     }
     // Wildlife returns to home territory, but flees from nearby fast cars.
     const age=n.travel+step

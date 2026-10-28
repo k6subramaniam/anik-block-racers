@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
@@ -17,6 +17,9 @@ import {VoxelLandscape,VoxelSky,voxelizeSceneMaterials} from './VoxelVisuals.jsx
 import {VOXEL_TREE_COLLIDERS} from './voxelStyle.js'
 import FrontierWorld from './FrontierWorld.jsx'
 import {buildObstacleIndex, nearbyObstacles} from './frontier.js'
+import {initialBattle,stepBattle} from '../battle/rules.js'
+import {useBattleStore,battleSnapshot} from '../battle/BattleUI.jsx'
+import BattleFX from '../battle/BattleFX.jsx'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
@@ -73,7 +76,9 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+  const battleStore=useBattleStore()
+  const lastBattleEnabled=useRef(battleStore.enabled)
   const rigid = useRef(null)
   const race = playerRef
   const elapsedHudRefresh = useRef(0)
@@ -83,10 +88,20 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
   const nextCull = useRef(0)
   const lastWeather = useRef('clear')
   const { camera } = useThree()
+  useLayoutEffect(()=>{
+    battleStore.update(battleSnapshot(battleRef.current,phase,mode))
+    if(phase!=='racing'){
+      battleRef.current.lastBomb=battleStore.actions.bomb
+      battleRef.current.lastMine=battleStore.actions.mine
+    }
+  },[phase,mode,battleStore,battleRef])
 
   useEffect(() => {
     const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
+    battleRef.current=initialBattle()
+    battleStore.actions={bomb:0,mine:0}
+    battleStore.update(battleSnapshot(battleRef.current,phase,mode))
     npcRef.current=makeNpcs(mode)
     villagerRef.current=makeVillagers()
     elapsedHudRefresh.current = 0
@@ -134,6 +149,12 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
     const frameDt=Math.min(Math.max(rawDt,0),.30)
     const smoothDt=Math.min(frameDt,.05)
     let next=race.current
+    if(lastBattleEnabled.current!==battleStore.enabled){
+      lastBattleEnabled.current=battleStore.enabled;battleRef.current=initialBattle()
+      npcRef.current=npcRef.current.map(n=>({...n,blastOffsetX:0,blastOffsetZ:0,blastShield:0}))
+    }
+    const battling=battleStore.enabled&&mode==='race'
+    battleEnabledRef.current=battling
     let frameEvent=null
     if(phase === 'racing' || phase==='exploring'){
       let remaining=frameDt
@@ -141,12 +162,16 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
         const dt=Math.min(.05,remaining)
         remaining-=dt
         const old=next
+        const wasRecovering=battling&&battleRef.current.respawn>0
+        const recoveringInput=battling&&(wasRecovering||battleRef.current.stun>0)?{}:inputRef.current
         next=mode==='explore'
           ? advanceExplore(old,inputRef.current,dt,nearbyObstacles(obstacleIndex,old),weatherClockRef.current)
-          : advanceKart(old,inputRef.current,dt,objects,weatherClockRef.current)
-        const moving=advanceNpcs(npcRef.current,dt,next,mode)
+          : wasRecovering?{...old,speed:0,event:null,elapsed:old.elapsed+dt}
+          : advanceKart(old,recoveringInput,dt,objects,weatherClockRef.current)
+        const oldNpcs=npcRef.current
+        const moving=advanceNpcs(oldNpcs,dt,next,mode)
         if(mode==='explore')villagerRef.current=advanceVillagers(villagerRef.current,dt,next)
-        const impact=applyRamming(next,moving,dt)
+        const impact=(wasRecovering||next.event==='finished')?{player:next,npcs:moving,event:null}:applyRamming(next,moving,dt)
         npcRef.current=impact.npcs
         if(impact.event){
           next={...impact.player,event:impact.event.kind,npcName:impact.event.npcName,
@@ -157,10 +182,17 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
             smashScore:(old.smashScore||0)+impact.points}
           frameEvent=impact.event.kind
         }
-        next.boostTimer=Math.max(0,(old.boostTimer||0)-dt)
+        if(battling&&next.event!=='finished'){
+          const combat=stepBattle(battleRef.current,next,npcRef.current,dt,battleStore.actions,{previousPlayer:old,previousBots:oldNpcs})
+          battleRef.current=combat.battle;next=combat.player;npcRef.current=combat.bots
+          const priority=['player-wreck','battle-respawn','player-blast','blast-knockout','repair','ammo','bomb-thrown','mine-dropped','rival-weapon']
+          const notice=priority.map(kind=>combat.battle.events.find(e=>e.kind===kind)).find(Boolean)
+          if(notice)battleRef.current.notice={...notice,time:combat.battle.time}
+        }
+        next.boostTimer=Math.max(0,(next.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)
         for(const pad of boostLocations){
-          if(!next.inWater && next.boostCooldown<=0 && Math.hypot(next.x-pad.x,next.z-pad.z)<2.0){
+          if(next.event!=='finished' && !(battling&&battleRef.current.respawn>0) && !next.inWater && next.boostCooldown<=0 && Math.hypot(next.x-pad.x,next.z-pad.z)<2.0){
             next={...next,boostTimer:1.5,boostCooldown:2,speed:Math.min(MAX_SPEED+7,Math.max(12,Math.abs(next.speed)+8)),event:'boost'}
             break
           }
@@ -196,6 +228,12 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
         root.visible=dx*dx+dz*dz < (mode==='explore'?150:140)**2
       }
     }
+    if(kart){
+      const b=battleRef.current
+      kart.visible=!(battling&&b.respawn>0)
+      kart.position.y=battling&&b.stun>0?Math.sin(b.stun/.65*Math.PI)*.55:0
+      kart.rotation.z=battling&&b.stun>0?Math.sin(b.stun*20)*.12:0
+    }
     if(rigid.current){
       rigid.current.setNextKinematicTranslation({x:next.x,y:-1.55*(next.submersion||0),z:next.z})
       rigid.current.setNextKinematicRotation({x:0,y:Math.sin(next.yaw/2),z:0,w:Math.cos(next.yaw/2)})
@@ -220,6 +258,7 @@ function Racer({ kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, p
     elapsedHudRefresh.current+=frameDt
     if(elapsedHudRefresh.current>.105 || frameEvent){
       elapsedHudRefresh.current=0
+      battleStore.update(battleSnapshot(battleRef.current,phase,mode))
       setHud({
         x:next.x,z:next.z,yaw:next.yaw,
         speed:next.speed,lap:next.lap,checkpoint:next.checkpoint,
@@ -259,6 +298,7 @@ function LoadedLevel(props){
   const npcRef=useRef(makeNpcs(props.mode))
   const villagerRef=useRef(makeVillagers())
   const playerRef=props.environmentPlayerRef
+  const battleRef=useRef(initialBattle()),battleEnabledRef=useRef(false)
   useEffect(()=>{
     track.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows && (child.name.startsWith('CASTLE_')||child.name.includes('crown')||child.name.includes('hood'))})
     kart.traverse(child=>{if(child.isMesh) child.castShadow=!!props.budget.objectsCastShadows})
@@ -275,8 +315,9 @@ function LoadedLevel(props){
     {props.mode==='explore' && <RelicMarkers collected={props.hudCollected||[]} />}
     <Physics gravity={[0,0,0]} timeStep={1/60} colliders={false} interpolation={false}>
       <StaticColliders objects={objects} mode={props.mode} />
-      <Racer {...props} kart={kart} objects={collidable} obstacleIndex={obstacleIndex} cullRoots={cullRoots} npcRef={npcRef} villagerRef={villagerRef} playerRef={playerRef} />
+      <Racer {...props} battleRef={battleRef} battleEnabledRef={battleEnabledRef} kart={kart} objects={collidable} obstacleIndex={obstacleIndex} cullRoots={cullRoots} npcRef={npcRef} villagerRef={villagerRef} playerRef={playerRef} />
     </Physics>
+    <BattleFX battleRef={battleRef} enabledRef={battleEnabledRef} playerRef={playerRef}/>
   </>
 }
 

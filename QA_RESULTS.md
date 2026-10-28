@@ -6,7 +6,7 @@
 - JSX parse: all 8 React JSX modules passed TypeScript syntactic transpilation.
 - New pixel palettes are deterministic, 16×16 RGBA, nearest-neighbour texture-ready and have recognizable seams.
 - 135 deterministic block-tree positions are outside the original racing track, world lakes, principal roads, and landmark collision zones.
-- Six ground texture planes are below the 3D racetrack elevation; terrain and weather gameplay math remain unchanged.
+- Seven ground texture planes (including green Blockhaven lawn) are below the 3D racetrack elevation; terrain and weather gameplay math remain unchanged.
 - No external image/texture assets or proprietary Minecraft artwork are included.
 
 ## Remaining release gates

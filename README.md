@@ -100,7 +100,7 @@ This is a **bounded** open-world prototype, not an infinite Minecraft map. Terra
 **Important:** This is original voxel styling, not official Minecraft/Mojang art, assets, textures, UI, or branding. No copyrighted textures are fetched or copied.
 
 - **16×16-pixel materials:** `src/game/voxelStyle.js` builds deterministic, original grayscale pixel palettes for grass, dirt, stone, road, oak, leaves, ice, snow, brick, basalt, sand, glass, and glow. `src/game/VoxelVisuals.jsx` uses `THREE.DataTexture` with nearest-neighbour filtering, square pixel motifs, flat-shaded glTF material clones, and no external texture network requests. Original GLB color accents are retained.
-- **Six pixel-ground biomes:** 3.2-metre repeating pixel tiles on the large grassy landscape, city paving, Crystal Ridge, canyon, ember region and Portal Grove, rendered below the existing drivable roads.
+- **Seven pixel-ground palettes:** 3.2-metre repeating pixel tiles across the grassy heartland, city paving, Crystal Ridge, canyon, ember region, Portal Grove and a bright green Blockhaven village lawn. All tile planes are below existing drivable roads.
 - **135 block-built trees:** trunk plus two cuboid foliage levels, all three layers drawn with `InstancedMesh`. A corresponding collision radius keeps free-roam vehicles out of the square trunks; trees are generated away from active roads, lakes, plazas, and travel corridors.
 - **170 square flowers and 72 terraced hill blocks:** the flowers use two GPU draw calls; Eco mode draws half the flowers. Decorative cliff edges remain near the far world perimeter.
 - **Chunky moving clouds and cube sun/moon:** multiple low-poly, square-edged sky forms reflect the existing day/night and weather clock with no image downloads or postprocessing.

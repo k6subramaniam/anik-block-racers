@@ -13,6 +13,7 @@ export const VOXEL_TERRAIN = Object.freeze([
   { id: 'canyon', x: -86, z: 66, w: 105, h: 105, y: .050, color: '#d7ad66', type: 'sand' },
   { id: 'ember', x: 86, z: 66, w: 105, h: 105, y: .050, color: '#72575b', type: 'basalt' },
   { id: 'grove', x: 0, z: -110, w: 56, h: 37, y: .058, color: '#50954b', type: 'leaves' },
+  { id: 'blockhaven', x: -77, z: 0, w: 92, h: 94, y: .062, color: '#67ac47', type: 'grass' },
 ])
 
 const PALETTES = Object.freeze({

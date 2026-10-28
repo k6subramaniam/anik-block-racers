@@ -31,11 +31,13 @@ test('voxel material classifier respects building materials and preserves lava a
   assert.equal(classifyVoxelSurface('OW_ice_crystal','gem'),'ice')
   assert.equal(classifyVoxelSurface('OW_basalt_charcoal','rock'),'road')
 })
-test('six pixel-terrain planes cover the existing 3D world but remain below the track',()=>{
-  assert.equal(VOXEL_TERRAIN.length,6)
+test('seven terrain palettes cover all districts and keep Blockhaven grassy',()=>{
+  assert.equal(VOXEL_TERRAIN.length,7)
   assert.ok(VOXEL_TERRAIN.every(t=>t.w>35&&t.h>30&&t.y<.16))
   const unique=new Set(VOXEL_TERRAIN.map(t=>t.type))
   assert.ok(unique.size>=5)
+  const village=VOXEL_TERRAIN.find(t=>t.id==='blockhaven')
+  assert.ok(village&&village.type==='grass'&&village.y>.05)
 })
 test('133+ cubic trees are evenly spaced and outside the actual racing track',()=>{
   assert.ok(VOXEL_TREES.length>=130)

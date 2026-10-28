@@ -27,11 +27,10 @@ function Blocks({parts,material,name}){
     const dummy=new THREE.Object3D(),color=new THREE.Color()
     parts.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.scale.set(p.w,p.h,p.d);dummy.rotation.set(0,p.yaw||0,0);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);mesh.setColorAt(i,color.set(p.color||IDENTITY_COLOR))})
     mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()
+    return()=>{mesh.geometry.dispose();mesh.dispose()}
   },[parts])
   if(!parts.length)return null
-  return <instancedMesh ref={ref} args={[null,null,parts.length]} material={material} name={name} dispose={null}>
-    <boxGeometry args={[1,1,1]}/>
-  </instancedMesh>
+  return <instancedMesh ref={ref} args={[null,null,parts.length]} material={material} name={name} dispose={null}><boxGeometry args={[1,1,1]}/></instancedMesh>
 }
 function Chunk({chunk,materials,register}){
   const parts=useMemo(()=>makeParts(chunk),[chunk])
@@ -68,13 +67,11 @@ function Marker({zone}){
     const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;return t
   },[zone])
   useEffect(()=>()=>texture.dispose(),[texture])
-  return <group position={[zone.x+15,0,zone.z+16]}>
+  return <group position={[zone.x+24,0,zone.z+28]}>
     <mesh position={[0,4,0]}><planeGeometry args={[11,2.75]}/><meshBasicMaterial map={texture} side={THREE.DoubleSide}/></mesh>
     {[-4,4].map(x=><mesh key={x} position={[x,1.8,0]}><boxGeometry args={[.35,3.6,.35]}/><meshStandardMaterial color="#7c633d"/></mesh>)}
   </group>
 }
-/** A single continuous ground plus spatially culled terrain groups: widening
- * the bounds cannot expose an empty void or draw the entire forest each frame. */
 export default function FrontierWorld({playerRef,budget}){
   const resources=useMemo(()=>{
     const textures={grass:createPixelTexture('grass',96,96),snow:createPixelTexture('ice',96,96),sand:createPixelTexture('sand',96,96),rock:createPixelTexture('dirt',96,96),oak:createPixelTexture('oak'),leaves:createPixelTexture('leaves'),stone:createPixelTexture('stone')}
@@ -85,11 +82,19 @@ export default function FrontierWorld({playerRef,budget}){
   const roots=useRef(new Map()),cooldown=useRef(0)
   const register=useMemo(()=>((id,node)=>{if(node)roots.current.set(id,node);else roots.current.delete(id)}),[])
   const landmarks=useMemo(()=>FRONTIER_LANDMARKS.map(l=>({...l,parts:landmarkParts(l)})),[])
-  const {camera}=useThree()
+  const {camera}=useThree(),previousPosition=useRef(null)
   const border=useMemo(()=>{const b=[];for(let x=-444;x<=444;x+=24)for(const z of [-380,380])b.push({x,y:.8,z,w:21,h:1.6,d:1,color:'#9e8058'});for(let z=-360;z<=360;z+=24)for(const x of [-455,455])b.push({x,y:.8,z,w:1,h:1.6,d:21,color:'#9e8058'});return b},[])
   useFrame((_,dt)=>{
+    const p=playerRef.current;if(!p)return
+    const previous=previousPosition.current
+    if(previous&&Math.hypot(p.x-previous.x,p.z-previous.z)>80){
+      if(camera.up.y<.5)camera.position.set(p.x,33,p.z+2)
+      else camera.position.set(p.x+Math.sin(p.yaw)*9,5.85,p.z+Math.cos(p.yaw)*9)
+      camera.lookAt(p.x,1.45,p.z);cooldown.current=0
+    }
+    previousPosition.current={x:p.x,z:p.z}
     cooldown.current-=dt;if(cooldown.current>0)return;cooldown.current=.25
-    const p=playerRef.current||camera,distance=frontierBudget(budget.tier).drawDistance
+    const distance=frontierBudget(budget.tier).drawDistance
     for(const chunk of FRONTIER_CHUNKS){const g=roots.current.get(chunk.id);if(g)g.visible=Math.hypot(p.x-chunk.x,p.z-chunk.z)<distance+68}
     for(const l of landmarks){const g=roots.current.get(l.id);if(g)g.visible=Math.hypot(p.x-l.x,p.z-l.z)<distance+45}
   })

@@ -31,6 +31,8 @@ test('four outer districts render and drive well outside the original map',async
    await expect(page.getByTestId('touch-forward')).toBeVisible()
    const read=()=>page.getByTestId('world-hud').getAttribute('data-world-x')
    await expect.poll(async()=>Math.abs(Number(await read()))).toBeGreaterThan(200)
+   await page.waitForTimeout(1400)
+   await page.screenshot({path:info.outputPath(`frontier-${id}-arrival.png`),animations:'disabled'})
    const initial=Number(await page.getByTestId('world-hud').getAttribute('data-world-z'))
    await page.keyboard.down('w');await page.waitForTimeout(1900);await page.keyboard.up('w')
    await expect.poll(async()=>Math.abs(Number(await page.getByTestId('world-hud').getAttribute('data-world-z'))-initial)).toBeGreaterThan(4)

@@ -3,7 +3,7 @@
   "private": true,
   "version": "3.2.0",
   "type": "module",
-  "description": "Battle racing with arcade mines, bombs, explosive barrels, health, AI counterattacks and protected respawns; expanded world and score challenges preserved",
+  "description": "ANIK Battle Race: three tracks, arcade landmines, throwable bombs, shared player and AI blast damage, checkpoint recovery; all earlier modes preserved",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

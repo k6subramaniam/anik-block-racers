@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Bot Smash Showdown",
+  "name": "ANIK Block Racers — Battle Race",
   "short_name": "ANIK Racers",
-  "description": "60-second voxel-car mayhem. Smash robots, launch off ramps and challenge friends. Original racing and open world included.",
+  "description": "Arcade battle racing, Bot Smash challenges, and a large voxel open world.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -17,6 +17,7 @@
     {"src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "shortcuts": [
+    {"name": "Battle Race — Mines & Bombs", "short_name": "Battle Race", "url": "./?view=battle", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
     {"name": "Daily Bot Smash", "short_name": "Daily Smash", "url": "./?source=shortcut-showdown", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
     {"name": "Explore the Open World", "short_name": "Explore World", "url": "./?source=shortcut-explore", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
     {"name": "Race Voxel Valley", "short_name": "Start Race", "url": "./?source=shortcut", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]}

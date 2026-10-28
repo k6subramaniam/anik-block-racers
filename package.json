@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "3.1.0",
+  "version": "3.2.0",
   "type": "module",
-  "description": "Bigger World and XL Arena: ninefold open-world area, four frontier districts, versioned 60-second challenges and actual gameplay sharing",
+  "description": "ANIK Battle Race: three tracks, arcade landmines, throwable bombs, shared player and AI blast damage, checkpoint recovery; all earlier modes preserved",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

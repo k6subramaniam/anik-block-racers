@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Dynamic Weather World",
+  "name": "ANIK Block Racers — Voxel Graphics Edition",
   "short_name": "ANIK Racers",
-  "description": "Drive into three animated lakes with splash and sinking physics; live changing day/night and rain, snow, wind weather in six voxel districts.",
+  "description": "Original 16-pixel voxel racing, blocky forests and cubic clouds with dynamic weather, free roaming and living villagers.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",

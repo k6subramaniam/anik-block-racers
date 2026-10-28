@@ -76,14 +76,18 @@ const WAVE_FRAGMENT=`
   uniform float uWind;
   varying vec2 vUV;
   void main(){
-    vec2 p=(vUV-.5)*40.0;
-    float little=sin(p.x*1.7+uTime*1.3)+sin(p.y*2.0-uTime*.9);
+    // Grid-quantized moving currents: chunky, intentionally pixel-like water.
+    vec2 block=floor(vUV*vec2(96.0,96.0));
+    vec2 p=(block/96.0-.5)*40.0;
+    float blocks=mod(block.x+floor(block.y/3.0),4.0);
+    float ripple=sin(p.x*1.7+uTime*1.3)+sin(p.y*2.0-uTime*.9);
     float rain=sin(length(fract(p*.47)-.5)*26.0-uTime*13.0);
-    float gleam=step(1.05,little)*.13+rain*uRain*.035;
-    vec3 day=vec3(.065,.48,.67)+vec3(gleam,gleam,gleam);
-    vec3 night=vec3(.025,.12,.25);
-    vec3 c=mix(night,day, .18+.82*uDay)+vec3(.016,.03,.045)*uWind;
-    gl_FragColor=vec4(c,.955);
+    float foam=step(1.3,ripple)*.12+step(3.2,blocks)*.035+step(.90,rain)*uRain*.055;
+    vec3 day=vec3(.055,.44,.65)+vec3(foam,foam,foam);
+    vec3 night=vec3(.024,.11,.24);
+    vec3 c=mix(night,day,.18+.82*uDay)+vec3(.012,.026,.035)*uWind;
+    c=floor(c*16.0)/16.0;
+    gl_FragColor=vec4(c,.962);
   }
 `
 

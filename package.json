@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.4.0",
   "type": "module",
-  "description": "Samsung 3D voxel racing game: three plungeable lakes, hydrodynamic rescue, day/night cycle, dynamic clear/rain/snow/wind weather and grip physics",
+  "description": "Original Minecraft-inspired voxel graphics: 16-pixel procedural textures, block trees, stepped cliffs and cubic clouds with Samsung GPU instancing",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

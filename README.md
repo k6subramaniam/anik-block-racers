@@ -93,3 +93,23 @@ This is a **bounded** open-world prototype, not an infinite Minecraft map. Terra
 - **Samsung-friendly**: low-cost geometry; particle counts are reduced automatically on ECO. All existing AI rivals, villages, NPC conversations, touch controls and 3-lap racing remain available.
 
 **Testing**: `npm test` verifies pure water, weather, racing and exploration logic. The GitHub Pages workflow also runs a production Vite build. Actual phone FPS, water visuals and battery usage should be checked on the Galaxy device after deployment.
+
+
+## v2.4 — Original pixel-textured voxel graphics (Minecraft-like aesthetic)
+
+**Important:** This is original voxel styling, not official Minecraft/Mojang art, assets, textures, UI, or branding. No copyrighted textures are fetched or copied.
+
+- **16×16-pixel materials:** `src/game/voxelStyle.js` builds deterministic, original grayscale pixel palettes for grass, dirt, stone, road, oak, leaves, ice, snow, brick, basalt, sand, glass, and glow. `src/game/VoxelVisuals.jsx` uses `THREE.DataTexture` with nearest-neighbour filtering, square pixel motifs, flat-shaded glTF material clones, and no external texture network requests. Original GLB color accents are retained.
+- **Six pixel-ground biomes:** 3.2-metre repeating pixel tiles on the large grassy landscape, city paving, Crystal Ridge, canyon, ember region and Portal Grove, rendered below the existing drivable roads.
+- **135 block-built trees:** trunk plus two cuboid foliage levels, all three layers drawn with `InstancedMesh`. A corresponding collision radius keeps free-roam vehicles out of the square trunks; trees are generated away from active roads, lakes, plazas, and travel corridors.
+- **170 square flowers and 72 terraced hill blocks:** the flowers use two GPU draw calls; Eco mode draws half the flowers. Decorative cliff edges remain near the far world perimeter.
+- **Chunky moving clouds and cube sun/moon:** multiple low-poly, square-edged sky forms reflect the existing day/night and weather clock with no image downloads or postprocessing.
+- **Pixel-style water shader:** water colors, light bands, and waves are quantized onto a fine grid. Three lake plunge/rescue triggers and gameplay physics are unchanged.
+- **Mobile-conscious:** shared material instances, fewer than 20 new instanced drawing batches and a small number of 16px textures. No real-time ray tracing, heavy bloom or high-poly procedural terrain. Existing Auto/Eco/Balanced/High settings continue to work.
+
+### Testing and release
+
+- `npm test` includes the original race, weather, water, AI and villager tests and 7 new voxel-graphics tests.
+- GitHub Pages automatically rebuilds the installed PWA when the `main` branch is updated. The old installed app ID is preserved.
+- In the app choose **EXPLORE OPEN WORLD** to see all six styled biomes. Choose **RACE 3 LAPS** for the original circuit.
+- Physical Samsung GPU FPS, thermal load and battery use must be verified on hardware after this update; test in Eco and Balanced graphics modes.

@@ -13,6 +13,8 @@ import VoxelVillagers from './VoxelVillagers.jsx'
 import {makeVillagers,advanceVillagers,nearbyVillager,talkToVillager} from './villagerAI.js'
 import {environmentAt} from './environment.js'
 import {SkyAndWeather,WaterWorld,WeatherParticles} from './WorldAtmosphere.jsx'
+import {VoxelLandscape,VoxelSky,voxelizeSceneMaterials} from './VoxelVisuals.jsx'
+import {VOXEL_TREE_COLLIDERS} from './voxelStyle.js'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
@@ -47,7 +49,8 @@ function makeGameAssets(scene) {
       objects.push({ id: child.name, x: p.x, z: p.z, radius: child.name.includes('castle') ? 4.9 : child.name.includes('boulder') ? 1.15 : .6 })
     }
   })
-  return { track, kart, objects, cullRoots }
+  const voxelStyle = voxelizeSceneMaterials(track, kart)
+  return { track, kart, objects, cullRoots, voxelStyle }
 }
 
 function StaticColliders({ objects, mode }) {
@@ -270,8 +273,9 @@ function Racer({ kart, objects, cullRoots, npcRef, villagerRef, playerRef, weath
 
 function LoadedLevel(props){
   const gltf=useGLTF(MODEL_URL)
-  const {track,kart,objects,cullRoots}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
-  const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES]:objects,[props.mode,objects])
+  const {track,kart,objects,cullRoots,voxelStyle}=useMemo(()=>makeGameAssets(gltf.scene),[gltf.scene])
+  useEffect(()=>()=>voxelStyle.dispose(),[voxelStyle])
+  const collidable=useMemo(()=>props.mode==='explore'?[...objects,...LANDMARK_OBSTACLES,...VOXEL_TREE_COLLIDERS]:objects,[props.mode,objects])
   const npcRef=useRef(makeNpcs(props.mode))
   const villagerRef=useRef(makeVillagers())
   const playerRef=props.environmentPlayerRef
@@ -283,6 +287,7 @@ function LoadedLevel(props){
   useEffect(()=>{props.onReady(true)},[props.onReady])
   return <>
     <primitive object={track} />
+    <VoxelLandscape budget={props.budget} />
     <OpenWorldDecor />
     <WaterWorld clockRef={props.weatherClockRef} playerRef={playerRef} phase={props.phase} mode={props.mode}/>
     <NpcActors key={props.mode} npcRef={npcRef} playerRef={playerRef} kartSource={kart} mode={props.mode} />
@@ -307,6 +312,7 @@ export default function RacingScene(props){
     <color attach="background" args={['#adcee1']} />
     <fog attach="fog" args={['#adcee1',135,230]} />
     <SkyAndWeather clockRef={weatherClockRef} phase={props.phase} previewRequest={props.weatherPreviewRequest} budget={budget} onWeatherPreview={weatherPreviewHud}/>
+    <VoxelSky clockRef={weatherClockRef}/>
     <WeatherParticles clockRef={weatherClockRef} playerRef={environmentPlayerRef} phase={props.phase} budget={budget}/>
     <React.Suspense fallback={null}>
       <LoadedLevel {...props} weatherClockRef={weatherClockRef} environmentPlayerRef={environmentPlayerRef} />

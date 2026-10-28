@@ -334,3 +334,9 @@ button{touch-action:manipulation;cursor:pointer}
  .water-hud{top:calc(134px + env(safe-area-inset-top));left:50%}
 }
 @media (pointer:coarse) and (orientation:landscape) and (max-height:345px){.weather-hud{top:47px}.water-hud{top:79px}}
+
+/* v2.4: deliberately square pixel-game typographic details; existing HUD unchanged. */
+.card-eyebrow,.stat-caption,.weather-time,.map-guide{font-family:ui-monospace,'Cascadia Mono','Courier New',monospace;letter-spacing:.085em}
+.intro-heading strong{filter:drop-shadow(3px 4px 0 rgba(29,60,23,.55))}
+.speed-numeral{text-shadow:2px 3px 0 rgba(18,43,25,.5)}
+@media(max-width:700px){.card-eyebrow{letter-spacing:.045em}}

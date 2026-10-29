@@ -19,6 +19,7 @@ import {registerBuiltTrack} from './tracks.js'
 import {sanitizeInput} from '../studio/p2p.js'
 import ReplayViewer from '../studio/ReplayViewer.jsx'
 import {createRaceReplay} from '../studio/replay.js'
+import {inviteFromHash} from '../studio/rooms.js'
 const EMPTY={forward:false,backward:false,left:false,right:false,drift:false,bomb:false,mine:false}
 const fresh=(id,laps=3,weather='dynamic',garage=null,multiplayer=false)=>({state:createBattle(id,{laps,weather,garage,multiplayer}),acc:0,snap:true,sent:false,replay:createRaceReplay(),runId:globalThis.crypto?.randomUUID?.()||`race-${Date.now()}-${Math.random()}`})
 function savedOptions(){try{return parseRacePreferences(localStorage.getItem('anik-battle-options-v1'))}catch{return {laps:3,weather:'dynamic'}}}
@@ -79,8 +80,9 @@ export default function BattleGame({onExit}){
   const [weatherMode,setWeatherMode]=useState(()=>normalizeWeather(new URLSearchParams(location.search).get('weather')??savedOptions().weather))
   const track=useMemo(()=>battleTrack(trackId),[trackId,blueprint])
   const [garage,setGarage]=useState(()=>readGarage())
-  const [studio,setStudio]=useState('')
-  const [network,setNetwork]=useState('solo'),multiplayerRef=useRef(null)
+  const [incomingInvite]=useState(()=>inviteFromHash(location.hash))
+  const [studio,setStudio]=useState(()=>inviteFromHash(location.hash)||new URLSearchParams(location.search).get('invite')==='1'?'multiplayer':'')
+  const [network,setNetwork]=useState('solo'),[peerConnected,setPeerConnected]=useState(false),multiplayerRef=useRef(null)
   const networkStatus=useRef('')
   const engineRef=useRef(null);if(!engineRef.current)engineRef.current=fresh(trackId,laps,weatherMode,garage)
   const inputRef=useRef({...EMPTY}),phaseRef=useRef('lobby'),resetRef=useRef(()=>{})
@@ -91,7 +93,7 @@ export default function BattleGame({onExit}){
   phaseRef.current=phase
   const budget=getRenderBudget(quality,{coarse:isCoarsePointer(),memory:navigator.deviceMemory,cores:navigator.hardwareConcurrency})
   const start=useCallback(()=>{
-    if(!ready||!['lobby','results','paused'].includes(phaseRef.current)||network==='guest')return
+    if(!ready||!['lobby','results','paused'].includes(phaseRef.current)||network==='guest'||(network==='host'&&!multiplayerRef.current?.connected))return
     resetRef.current();engineRef.current=fresh(trackId,laps,weatherMode,garage,network==='host');
     if(network==='host'&&multiplayerRef.current?.connected)multiplayerRef.current.send({v:1,type:'start',track:trackId,laps,weather:weatherMode,trackcode:trackId==='custom'&&blueprint?encodeBlueprint(blueprint):''});setHud(battleHud(engineRef.current.state));setResult(null);setCount(3);setSettings(false);setPhase('countdown')
   },[ready,trackId,laps,weatherMode,garage,network,blueprint])
@@ -178,9 +180,9 @@ export default function BattleGame({onExit}){
       <div className="br-track-select">{BATTLE_TRACKS.map(t=><button key={t.id} className={trackId===t.id?'selected':''} onClick={()=>changeTrack(t.id)} data-testid={`battle-track-${t.id}`} aria-pressed={trackId===t.id}><TrackPreview track={battleTrack(t.id)}/><span><b>{LEVEL_ART[t.id]?.name||t.name}</b><small>{t.tag} · {t.name}</small></span></button>)}</div>
       <div className="studio-actions"><button data-testid="open-garage" onClick={()=>setStudio('garage')}>◈ GARAGE · {garage.credits} CREDITS</button><button data-testid="open-editor" onClick={()=>setStudio('editor')}>▦ TRACK CREATOR</button><button data-testid="open-multiplayer" onClick={()=>setStudio('multiplayer')}>◎ PLAY WITH FRIEND</button><button data-testid="open-leaderboard" onClick={()=>setStudio('leaderboard')}>★ BEST TIMES</button></div>
       {blueprint&&<button data-testid="battle-track-custom" className="br-secondary" onClick={()=>changeTrack('custom')}>▦ CUSTOM TRACK: {blueprint.name}{trackId==='custom'?' ✓':''}</button>}
-      {network!=='solo'&&<p data-testid="battle-multiplayer-status">PRIVATE MATCH: {network==='host'?'HOST':'GUEST'} · {multiplayerRef.current?.connected?'CONNECTED':'DISCONNECTED'}{network==='guest'?' · Host starts the race.':''}</p>}
+      {network!=='solo'&&<p data-testid="battle-multiplayer-status">PRIVATE MATCH: {network==='host'?'HOST':'GUEST'} · {peerConnected?'CONNECTED':'WAITING FOR FRIEND'}{network==='guest'?' · Host starts the race.':peerConnected?' · You can start the race.':' · Share your invitation from Play With Friend.'}</p>}
       <div className="br-race-setup"><label htmlFor="battle-laps">LAPS / ROUNDS<select id="battle-laps" data-testid="battle-laps" value={laps} onChange={e=>configure(e.target.value,weatherMode)}>{Array.from({length:10},(_,i)=><option key={i+1} value={i+1}>{i+1} {i===0?'lap':'laps'}</option>)}</select></label><label htmlFor="battle-weather-select">WEATHER<select id="battle-weather-select" data-testid="battle-weather-select" value={weatherMode} onChange={e=>configure(laps,e.target.value)}>{WEATHER_OPTIONS.map(w=><option key={w} value={w}>{w==='dynamic'?'CHANGING WEATHER':w.toUpperCase()}</option>)}</select></label></div>
-      <button className="br-primary" onClick={start} disabled={!ready||network==='guest'} data-testid="battle-start"><Play size={18} fill="currentColor"/>{network==='guest'?'WAIT FOR HOST TO START':ready?'START BATTLE RACE':'LOADING KARTS…'}<span>↗</span></button>
+      <button className="br-primary" onClick={start} disabled={!ready||network==='guest'||(network==='host'&&!peerConnected)} data-testid="battle-start"><Play size={18} fill="currentColor"/>{network==='guest'?'WAIT FOR HOST TO START':network==='host'&&!peerConnected?'WAITING FOR FRIEND TO JOIN':ready?'START BATTLE RACE':'LOADING KARTS…'}<span>↗</span></button>
       <div className="br-legend"><span><TriangleAlert size={13}/> Red tiles = mines</span><span><Bomb size={13}/> Orange rings = blast zone</span><span><HeartPulse size={13}/> Green pads = repair</span><span>⚡ Cyan crystals = turbo</span></div><small className="br-help">WASD / arrows · Space drift · B bomb · V mine · P pause. On phone, use the touch buttons. Bots use the same damage and weapon cooldowns.</small>
     </section></div>}
     {phase==='countdown'&&<div className="br-countdown"><small>ARMOR ON. EYES ON THE TRACK.</small><strong>{count}</strong><span>{laps} {laps===1?'lap':'laps'} · Sequential checkpoints · Physical kart collisions</span></div>}
@@ -190,7 +192,7 @@ export default function BattleGame({onExit}){
     {studio==='editor'&&<TrackEditor value={blueprint} onUse={editorUse} onClose={()=>setStudio('')}/>}
     {studio==='leaderboard'&&<Leaderboard onClose={()=>setStudio('')}/>}
     {studio==='replay'&&<ReplayViewer replay={engineRef.current.replay} trackId={trackId} onClose={()=>setStudio('')}/>}
-    {studio==='multiplayer'&&<Multiplayer networkRef={multiplayerRef} onConnected={conn=>{setNetwork(conn.role);setStudio('')}} onPacket={receivePacket} onClose={()=>setStudio('')}/>}
+    {studio==='multiplayer'&&<Multiplayer networkRef={multiplayerRef} autoInvite={incomingInvite} onReady={conn=>{setNetwork(conn.role);setPeerConnected(!!conn.connected)}} onConnected={conn=>{setNetwork(conn.role);setPeerConnected(true);setStudio('')}} onLeave={reason=>{setPeerConnected(false);if(reason==='left')setNetwork('solo')}} onPacket={receivePacket} onClose={()=>setStudio('')}/>}
     {settings&&<div className="br-overlay"><section className="br-panel" role="dialog" aria-modal="true" aria-label="Battle race settings"><div className="br-panel-top"><h2>GALAXY SETTINGS</h2><button aria-label="Close battle settings" onClick={()=>setSettings(false)}><X/></button></div><p>Graphics quality changes rendering only. Race rules and blast effects stay the same.</p><div className="br-quality">{['auto','eco','balanced','high'].map(q=><button key={q} className={q===quality?'selected':''} onClick={()=>setQuality(q)}>{q.toUpperCase()}</button>)}</div><label className="br-checkbox"><input type="checkbox" checked={reduced} onChange={e=>setReduced(e.target.checked)}/> Reduced blast particles</label><p>Rain and snow reduce traction and braking. Wind drifts exposed karts. Climbing slows the vehicle; descents add speed. Collisions transfer momentum and may damage both karts, but separate bridge decks never collide. Mines arm after a short delay. Bombs recharge in 6 seconds; dropped mines recharge in 9 seconds. A destroyed kart returns to its last checkpoint with a temporary shield. Green repair pads restore 40 armor. Villagers and other game modes are unaffected.</p><button className="br-primary" onClick={()=>setSettings(false)}>DONE</button></section></div>}
   </div>
 }

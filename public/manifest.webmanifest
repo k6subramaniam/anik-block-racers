@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Creator Studio",
+  "name": "ANIK Block Racers \u2014 Creator Studio",
   "short_name": "ANIK Racers",
-  "description": "Garage upgrades, destructible stunts, custom tracks and private 2-player racing, plus five multilevel turbo battle tracks and an expanded voxel world.",
+  "description": "Voxel battle racing, private one-tap friend invites, custom tracks, kart garage, and an expanded open world.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -39,6 +39,17 @@
   ],
   "shortcuts": [
     {
+      "name": "Invite a Friend to Race",
+      "short_name": "Invite Friend",
+      "url": "./?view=battle&invite=1",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
       "name": "Battle Race & Creator Studio",
       "short_name": "Creator Studio",
       "url": "./?view=battle",
@@ -50,7 +61,7 @@
       ]
     },
     {
-      "name": "Battle Race — Mines & Bombs",
+      "name": "Battle Race \u2014 Mines & Bombs",
       "short_name": "Battle Race",
       "url": "./?view=battle",
       "icons": [

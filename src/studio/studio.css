@@ -56,3 +56,28 @@
 @media(max-width:620px) and (orientation:portrait){.studio-panel{padding:15px;max-height:calc(100dvh - 14px)}.studio-builder-layout{grid-template-columns:1fr}.studio-editor-map{max-height:250px}.studio-editor-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}.studio-editor-tools .studio-buttons{grid-column:span 2}.studio-kart-grid{grid-template-columns:repeat(3,1fr)}.studio-kart{min-height:105px!important}.studio-upgrades{grid-template-columns:1fr}.studio-profile-gauge{top:250px;left:10px}.studio-signal{grid-template-columns:1fr}.studio-signal button{width:100%}}
 @media(prefers-reduced-motion:reduce){.studio-panel *, .studio-panel{transition:none!important}}
 .studio-replay-canvas{width:100%;max-height:55vh;aspect-ratio:9/5;border:1px solid #9ed2c378;border-radius:8px;background:#142d34;display:block}
+
+/* One-tap private multiplayer rooms — responsive first and large touch targets. */
+.studio-room-actions{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0}
+.studio-room-actions button{min-height:47px;flex:1;min-width:120px}
+.studio-room-paste{display:grid;gap:9px;margin:13px 0}
+.studio-room-paste label,.studio-room-card label{font-size:11px;color:#d5eabf;font-weight:800;letter-spacing:.6px}
+.studio-room-paste input,.studio-room-card input{font-size:12px!important;min-height:46px;letter-spacing:0}
+.studio-room-ready{display:flex;align-items:center;gap:9px;margin:11px 0;padding:9px 11px;background:#27433a;border-radius:7px;font-size:12px}
+.studio-online{color:#bdf87e}.studio-searching{color:#ffcf82}
+.studio-room-card{padding:10px;background:#142d39;border:1px solid #c9ecae42;border-radius:9px}
+.studio-room-card p{margin:8px 0}
+.studio-room-start{width:100%;margin:8px 0}
+.studio-room-leave{margin-top:10px;border-color:#ffb5a66a!important;color:#fbd3c4!important}
+.studio-room-help{margin-top:12px}.studio-room-help button{margin:5px 0 9px}
+.studio-room-wait{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;text-align:center}
+.studio-pulse{color:#ddf98a;font-size:42px;line-height:1}
+@media(max-width:620px){.studio-room-actions{flex-direction:column}.studio-room-actions button{width:100%;min-height:46px}}
+
+/* One-tap friend entry alongside the established Battle Race launcher. */
+.br-friend-launch{display:none;position:fixed;bottom:97px;right:30px;z-index:16;align-items:center;gap:10px;padding:14px 20px;border:1px solid #d6fd89;border-radius:10px;background:#29413be9;color:#edffc8;font:850 13px 'DM Sans',system-ui,sans-serif;cursor:pointer;box-shadow:0 8px 30px #0006;touch-action:manipulation}
+.br-friend-launch small{display:block;font-size:10px;margin-top:4px;color:#cde1ca;font-weight:600}
+.sd-hub:has(.showdown.phase-lobby)>.br-friend-launch{display:flex}
+.br-friend-launch:focus-visible{outline:3px solid #fff1be;outline-offset:3px}
+@media(max-height:540px) and (orientation:landscape){.br-friend-launch{bottom:78px;right:18px;padding:10px 13px;font-size:11px}.br-friend-launch small{font-size:9px}}
+@media(max-width:620px) and (orientation:portrait){.br-friend-launch{bottom:73px;right:15px;left:15px;padding:10px;justify-content:center;font-size:11px}.br-friend-launch small{font-size:9px}.sd-hub:has(.showdown.phase-lobby) .sd-lobby-wrap{padding-bottom:145px}}

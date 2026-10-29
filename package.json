@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "4.0.0",
+  "version": "4.1.0",
   "type": "module",
-  "description": "ANIK Creator Studio: stunt destruction, kart garage, custom tracks and 2-player WebRTC plus v3.4 turbo, weather and multilevel racing",
+  "description": "One-tap friend invites, automatic encrypted peer discovery, Creator Studio, custom tracks, turbo and voxel battle racing",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",
@@ -18,7 +18,8 @@
     "lucide-react": "^0.469.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "three": "^0.179.0"
+    "three": "^0.179.0",
+    "trystero": "0.26.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

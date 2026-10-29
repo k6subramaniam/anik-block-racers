@@ -37,7 +37,7 @@ test('private race invitation opens directly on a second browser with no codes t
  const guest=await page.context().newPage(),guestErrors=[]
  guest.on('pageerror',e=>guestErrors.push(e.message))
  await guest.goto(local.href)
- await expect(guest.getByTestId('studio-room-lobby').or(guest.getByTestId('battle-multiplayer-status'))).toBeVisible({timeout:45000})
+ await expect(guest.getByTestId('studio-room-lobby').or(guest.getByTestId('battle-multiplayer-status')).first()).toBeVisible({timeout:45000})
  await expect(guest.getByTestId('studio-offer-code')).toHaveCount(0)
  await guest.screenshot({path:info.outputPath('studio-friend-autojoin.png'),animations:'disabled'})
  await guest.close()

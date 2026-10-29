@@ -19,3 +19,61 @@
 @media(max-height:360px) and (orientation:landscape){.br-lobby .br-legend{display:none}.br-lobby h1{font-size:26px}.br-track-select button{min-width:96px;padding:4px}.br-race-setup select{min-height:32px}}
 
 .br-turbo{position:absolute;z-index:9;left:17px;top:196px;width:225px;border-radius:8px;background:#12333de6;border:1px solid #55e5ef77;padding:8px 11px;pointer-events:none}.br-turbo strong{font-size:12px;color:#c7fdff}.br-turbo small{font-size:8px;color:#b4d9e6}.br-turbo-bar{height:5px;background:#253f47;border-radius:3px;margin:5px 0}.br-turbo-bar i{display:block;height:100%;background:#6ceeff;transition:width .1s}@media(max-height:540px) and (orientation:landscape){.br-turbo{top:163px;left:12px;width:195px;padding:5px 9px}.br-turbo strong{font-size:10px}.br-turbo small{font-size:7px}}@media(max-width:600px) and (orientation:portrait){.br-turbo{top:240px;left:10px;width:165px;padding:6px}.br-turbo strong{font-size:10px}.br-turbo small{font-size:7px}}
+
+/* v4.1 compact racing HUD: avoid mobile panel overlap without changing touch targets. */
+@media (max-width:600px) and (orientation:portrait){
+  /* Reserve the full width for three small, legible race counters. */
+  .battle-game .br-stats{top:64px;left:8px;right:8px;gap:5px}
+  .battle-game .br-stats>div{min-width:0;flex:1;padding:5px 7px 4px;border-radius:6px}
+  .battle-game .br-stats small{font-size:8px;line-height:1.1;letter-spacing:.8px}
+  .battle-game .br-stats b{font-size:19px;line-height:1.12}
+  .battle-game .br-stats em{font-size:11px;margin-left:3px}
+
+  /* Armor and opponent status sit beside one another, never on top. */
+  .battle-game .br-health{top:112px;left:8px;width:calc(100% - 153px);padding:5px 7px;border-radius:6px}
+  .battle-game .br-health>div:first-child{gap:4px;font-size:9px;line-height:1.2}
+  .battle-game .br-health svg{width:12px;height:12px;flex-shrink:0}
+  .battle-game .br-health b{font-size:12px}
+  .battle-game .br-health-track{height:4px;margin-top:4px}
+  .battle-game .br-rivals{top:112px;right:8px;width:132px;padding:4px 7px;border-radius:6px}
+  .battle-game .br-rivals>div{font-size:9px;line-height:1.2;padding:2px 0;gap:5px}
+  .battle-game .br-rivals b{font-size:8px;white-space:nowrap}
+
+  /* Secondary stats use low-profile chips instead of tall overlapping cards. */
+  .battle-game .br-altitude{top:148px;left:8px;max-width:calc(100% - 153px);padding:4px 6px;border-radius:5px;font-size:8px;line-height:1.2}
+  .battle-game .br-turbo{top:174px;left:8px;width:min(190px,calc(100% - 158px));padding:5px 7px;border-radius:6px}
+  .battle-game .br-turbo strong{display:block;font-size:10px;line-height:1.2;white-space:nowrap}
+  .battle-game .br-turbo small{display:none}
+  .battle-game .br-turbo-bar{height:3px;margin:4px 0 0}
+  .battle-game .studio-profile-gauge{top:170px;right:8px;left:auto;width:132px;padding:5px 7px;border-radius:6px;font-size:9px;line-height:1.2}
+  .battle-game .studio-profile-gauge strong{display:inline;font-size:13px;margin:0 3px}
+  .battle-game .br-danger{top:212px}
+}
+@media (max-width:360px) and (orientation:portrait){
+  .battle-game .br-stats b{font-size:17px}
+  .battle-game .br-health>div:first-child{font-size:8px}
+  .battle-game .br-altitude{font-size:7.5px}
+  .battle-game .studio-profile-gauge{width:126px}
+}
+@media (max-height:540px) and (orientation:landscape){
+  .battle-game .br-stats{top:52px;left:10px;gap:5px}
+  .battle-game .br-stats>div{min-width:61px;padding:4px 7px;border-radius:6px}
+  .battle-game .br-stats small{font-size:7px}
+  .battle-game .br-stats b{font-size:19px;line-height:1.15}
+  .battle-game .br-stats em{font-size:10px;margin-left:3px}
+  .battle-game .br-health{top:99px;left:10px;width:220px;padding:5px 7px}
+  .battle-game .br-health>div:first-child{font-size:9px}
+  .battle-game .br-health b{font-size:12px}
+  .battle-game .br-health-track{height:4px;margin-top:3px}
+  .battle-game .br-rivals{top:52px;right:10px;width:136px;padding:5px 8px}
+  .battle-game .br-rivals>div{font-size:9px;padding:2px 0}
+  .battle-game .br-rivals b{font-size:8px}
+  .battle-game .br-altitude{top:136px;left:10px;padding:4px 7px;font-size:8px}
+  .battle-game .br-turbo{top:160px;left:10px;width:195px;padding:5px 8px}
+  .battle-game .br-turbo strong{font-size:10px}
+  .battle-game .br-turbo small{display:none}
+  .battle-game .br-turbo-bar{height:3px;margin:4px 0 0}
+  .battle-game .studio-profile-gauge{top:112px;right:10px;left:auto;width:136px;padding:5px 7px;font-size:9px;line-height:1.2}
+  .battle-game .studio-profile-gauge strong{display:inline;font-size:13px;margin:0 3px}
+  .battle-game .br-danger{top:193px}
+}

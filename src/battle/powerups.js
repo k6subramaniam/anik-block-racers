@@ -15,7 +15,7 @@ export function createPowerups(trackId){
   })
 }
 export function activateTurbo(actor,seconds=TURBO_DURATION){
-  return {...actor,turbo:Math.max(actor.turbo||0,seconds),speed:Math.min(TURBO_TOP_SPEED,Math.max(actor.speed,29)),turboCount:(actor.turboCount||0)+1}
+  return {...actor,turbo:Math.max(actor.turbo||0,seconds*(actor.turboFactor||1)),speed:Math.min(TURBO_TOP_SPEED,Math.max(actor.speed,29)),turboCount:(actor.turboCount||0)+1}
 }
 export function advancePowerups(state,oldActors,dt){
   const pickups=[]

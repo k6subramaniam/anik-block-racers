@@ -4,6 +4,8 @@
 import {battleTrack,atDistance,nearestOnTrack,crossedGate,segmentDistance} from './tracks.js'
 import {raceWeather,normalizeLaps,normalizeWeather} from './weather.js'
 import {resolveVehicleContacts} from './collisions.js'
+import {garageModifiers} from '../studio/garage.js'
+import {createStuntWorld,advanceStunts} from '../studio/stunts.js'
 import {createPowerups,advancePowerups,TURBO_TOP_SPEED} from './powerups.js'
 export const BATTLE_STEP=1/60
 export const BATTLE_LAPS=3
@@ -22,7 +24,8 @@ const alive=a=>a.hp>0&&a.respawn<=0&&!a.finished
 const decay=(x,dt)=>Math.max(0,(x||0)-dt)
 export function createBattle(trackId='blast',options={}){
   const track=battleTrack(trackId)
-  const actors=DRIVERS.map((d,i)=>({...d,...atDistance(track,i*4,d.lane),speed:0,hp:100,shield:1.5,stun:0,contactStun:0,kickX:0,kickZ:0,slipX:0,slipZ:0,crashes:0,collisionDamage:0,
+  const mods=garageModifiers(options.multiplayer?null:options.garage)
+  const actors=DRIVERS.map((d,i)=>({...d,topSpeed:i===0?mods.topSpeed:options.multiplayer&&i===1?27:d.topSpeed,engineFactor:i===0?mods.acceleration:1,gripFactor:i===0?mods.grip:1,armorMult:i===0?mods.armorMultiplier:1,maxHp:i===0?mods.maxHp:100,turboFactor:i===0?mods.turboDuration:1,color:i===0?mods.color:d.color,...atDistance(track,i*4,d.lane),speed:0,hp:i===0?mods.maxHp:100,shield:1.5,stun:0,contactStun:0,kickX:0,kickZ:0,slipX:0,slipZ:0,crashes:0,collisionDamage:0,
     lap:1,nextGate:1,passed:0,safeS:i*4,respawn:0,knockouts:0,damageDealt:0,damageTaken:0,
     turbo:0,turboCount:0,bombCooldown:0,mineCooldown:0,repairCooldown:0,bombHeld:false,mineHeld:false,finished:false,finishTick:null}))
   const mines=[28,...[.22,.40,.56,.69,.89].map(f=>f*track.length)]
@@ -30,7 +33,7 @@ export function createBattle(trackId='blast',options={}){
   const hazards=mines.map((s,i)=>({...atDistance(track,s,i===0?0:i%2?2.7:-2.7),groundY:atDistance(track,s).y,id:`track-mine-${i}`,type:'mine',owner:null,y:atDistance(track,s).y+.2,arm:.7,fuse:-1,cooldown:0,persistent:true,life:Infinity}))
   for(const [i,f] of [.15,.33,.63,.82].entries())hazards.push({...atDistance(track,track.length*f,i%2?-4:4),id:`track-crate-${i}`,type:'crate',owner:null,groundY:atDistance(track,track.length*f).y,y:atDistance(track,track.length*f).y+.6,arm:0,fuse:-1,cooldown:0,persistent:true,life:Infinity})
   const weatherMode=normalizeWeather(options.weather)
-  return {trackId,laps:normalizeLaps(options.laps),weatherMode,weather:raceWeather(0,weatherMode,trackId),pairCooldowns:{},powerups:createPowerups(trackId),tick:0,actors,hazards,explosions:[],events:[],nextId:0,done:false,finishOrder:[],totalBlasts:0}
+  return {trackId,stunts:createStuntWorld(trackId),remoteActive:!!options.multiplayer,laps:normalizeLaps(options.laps),weatherMode,weather:raceWeather(0,weatherMode,trackId),pairCooldowns:{},powerups:createPowerups(trackId),tick:0,actors,hazards,explosions:[],events:[],nextId:0,done:false,finishOrder:[],totalBlasts:0}
 }
 export function aiInput(actor,track,state){
   if(!alive(actor))return {}
@@ -47,19 +50,19 @@ export function integrateActor(actor,input,track,dt=BATTLE_STEP,weather=raceWeat
   if(actor.finished)return {...a,speed:0}
   if(actor.respawn>0){
     a.respawn=decay(actor.respawn,dt)
-    if(a.respawn<=0)return {...a,...atDistance(track,actor.safeS,actor.lane),hp:100,shield:2.5,stun:0,contactStun:0,kickX:0,kickZ:0,slipX:0,slipZ:0,speed:0,turbo:0}
+    if(a.respawn<=0)return {...a,...atDistance(track,actor.safeS,actor.lane),hp:a.maxHp||100,shield:2.5,stun:0,contactStun:0,kickX:0,kickZ:0,slipX:0,slipZ:0,speed:0,turbo:0}
     return {...a,speed:0}
   }
   const gas=a.stun>0||a.contactStun>0?0:Number(!!input.forward)-Number(!!input.backward)
   let speed=a.speed
-  if(gas>0)speed+=(speed<0?25:14)*(a.turbo>0?2.2:1)*dt*(.8+.2*weather.grip)
+  if(gas>0)speed+=(speed<0?25:14)*(a.engineFactor||1)*(a.turbo>0?2.2:1)*dt*(.8+.2*weather.grip)
   else if(gas<0)speed-=(speed>0?27:8)*dt*weather.braking
   else speed=Math.sign(speed)*Math.max(0,Math.abs(speed)-(3.5+Math.abs(speed)*.1)*dt)
   const surface=nearestOnTrack(track,a),along=-Math.sin(a.yaw)*surface.dx-Math.cos(a.yaw)*surface.dz
   if(Math.abs(speed)>.4||gas)speed-=9.81*surface.grade*along*dt
   speed=clamp(speed,-6,a.turbo>0?TURBO_TOP_SPEED:(Number.isFinite(input.speedLimit)?Math.min(a.topSpeed,input.speedLimit):a.topSpeed))
   const steer=Number.isFinite(input.steer)?clamp(input.steer,-1,1):Number(!!input.right)-Number(!!input.left)
-  const yaw=a.yaw-steer*(input.drift?2.05:1.45)*Math.max(.47,track.grip*weather.grip)*Math.min(1,Math.abs(speed)/7)*dt*(speed<0?-1:1)
+  const yaw=a.yaw-steer*(input.drift?2.05:1.45)*Math.max(.47,track.grip*weather.grip)*(a.gripFactor||1)*Math.min(1,Math.abs(speed)/7)*dt*(speed<0?-1:1)
   const desiredX=-Math.sin(yaw)*speed,desiredZ=-Math.cos(yaw)*speed
   const traction=1-Math.exp(-dt*(18*track.grip*weather.grip)*(input.drift?.65:1))
   const slipX=(a.slipX??desiredX)+(desiredX-(a.slipX??desiredX))*traction
@@ -95,7 +98,7 @@ export function damageBlast(actor,blast){
   if(!alive(actor)||actor.shield>0)return {actor,damage:0}
   const dx=actor.x-blast.x,dz=actor.z-blast.z,dy=(actor.y||0)+.7-(blast.y||.2),distance=Math.hypot(dx,dy,dz)
   if(distance>=blast.radius)return {actor,damage:0}
-  const damage=Math.min(actor.hp,Math.max(8,Math.round(blast.power*(1-.7*distance/blast.radius))))
+  const damage=Math.min(actor.hp,Math.max(8,Math.round(blast.power*(1-.7*distance/blast.radius)*(actor.armorMult||1))))
   const len=Math.hypot(dx,dz),ux=len>.001?dx/len:Math.cos(actor.yaw),uz=len>.001?dz/len:-Math.sin(actor.yaw)
   const hp=actor.hp-damage,knock=8*(1-.5*distance/blast.radius)
   return {damage,actor:{...actor,hp,damageTaken:actor.damageTaken+damage,shield:.6,stun:.6,speed:actor.speed*.35,
@@ -165,13 +168,13 @@ export function battleRanking(state){
     return remaining(a)-remaining(b)
   })
 }
-export function stepBattle(previous,input={}){
+export function stepBattle(previous,input={},remoteInput=null){
   if(previous.done)return previous
   const track=battleTrack(previous.trackId),dt=BATTLE_STEP
   const state={...previous,tick:previous.tick+1,events:[],hazards:previous.hazards.map(h=>({...h})),
-    explosions:previous.explosions.filter(e=>e.ttl>dt).map(e=>({...e,ttl:e.ttl-dt})),powerups:previous.powerups.map(p=>({...p})),finishOrder:[...previous.finishOrder]}
+    explosions:previous.explosions.filter(e=>e.ttl>dt).map(e=>({...e,ttl:e.ttl-dt})),powerups:previous.powerups.map(p=>({...p})),finishOrder:[...previous.finishOrder],stunts:{pads:previous.stunts.pads.map(p=>({...p})),props:previous.stunts.props.map(p=>({...p})),bursts:previous.stunts.bursts.map(b=>({...b}))}}
   state.weather=raceWeather(state.tick,state.weatherMode,state.trackId)
-  const commands=previous.actors.map(a=>a.id==='player'?input:aiInput(a,track,previous))
+  const commands=previous.actors.map((a,i)=>i===0?input:i===1&&remoteInput?remoteInput:aiInput(a,track,previous))
   state.actors=previous.actors.map((a,i)=>integrateActor(a,commands[i],track,dt,state.weather))
   advancePowerups(state,previous.actors,dt)
   const contacts=resolveVehicleContacts(state.actors,previous.actors,track,state.tick,previous.pairCooldowns)
@@ -182,7 +185,9 @@ export function stepBattle(previous,input={}){
     if(cmd.mine&&!before.mineHeld)deployHazard(state,a,'mine')
     a.bombHeld=!!cmd.bomb;a.mineHeld=!!cmd.mine
   }
+  state.playerSteer=Number(!!input.right)-Number(!!input.left)
   advanceHazards(state,previous.actors,dt)
+  advanceStunts(state,previous,dt)
   state.actors=state.actors.map((a,i)=>{
     if(alive(a)&&a.repairCooldown<=0&&a.hp<100&&track.repairs.some(p=>Math.hypot(a.x-p.x,a.z-p.z,(a.y||0)-p.y)<2.8)){
       a={...a,hp:Math.min(100,a.hp+40),repairCooldown:8};state.events.push({kind:'repair',actor:a.id})
@@ -193,6 +198,6 @@ export function stepBattle(previous,input={}){
     return next
   })
   state.explosions=state.explosions.slice(-24)
-  state.done=state.actors[0].finished
+  state.done=state.actors[0].finished&&(!state.remoteActive||state.actors[1].finished)
   return state
 }

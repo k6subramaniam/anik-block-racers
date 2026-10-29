@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers \u2014 Multilevel Racing",
+  "name": "ANIK Block Racers — Creator Studio",
   "short_name": "ANIK Racers",
-  "description": "Five battle track levels, changing weather, vehicle crashes and your choice of race laps.",
+  "description": "Garage upgrades, destructible stunts, custom tracks and private 2-player racing, plus five multilevel turbo battle tracks and an expanded voxel world.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -39,7 +39,18 @@
   ],
   "shortcuts": [
     {
-      "name": "Battle Race \u2014 Mines & Bombs",
+      "name": "Battle Race & Creator Studio",
+      "short_name": "Creator Studio",
+      "url": "./?view=battle",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Battle Race — Mines & Bombs",
       "short_name": "Battle Race",
       "url": "./?view=battle",
       "icons": [

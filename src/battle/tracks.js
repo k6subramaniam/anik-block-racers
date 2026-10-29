@@ -14,9 +14,16 @@ export const BATTLE_TRACKS = Object.freeze([
 ])
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v))
 const cache=new Map()
+let customSpec=null
+export function registerBuiltTrack(spec){
+  if(!spec||spec.id!=='custom'||!Array.isArray(spec.points)||spec.points.length<6)throw new RangeError('A validated custom track is required')
+  customSpec={...spec,points:spec.points.map(p=>[...p])}
+  cache.delete('custom')
+}
+export function hasBuiltTrack(){return !!customSpec}
 export function battleTrack(id='blast'){
   if(cache.has(id))return cache.get(id)
-  const spec=BATTLE_TRACKS.find(t=>t.id===id)
+  const spec=id==='custom'?customSpec:BATTLE_TRACKS.find(t=>t.id===id)
   if(!spec)throw new RangeError('Unknown battle circuit')
   const path=[],n=spec.points.length
   for(let i=0;i<n;i++)for(let j=0;j<24;j++){

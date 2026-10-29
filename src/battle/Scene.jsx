@@ -5,12 +5,14 @@ import * as THREE from 'three'
 import {createPixelTexture,voxelizeSceneMaterials} from '../game/VoxelVisuals.jsx'
 import {WeatherParticles} from '../game/WorldAtmosphere.jsx'
 import {atDistance} from './tracks.js'
+import StuntVisuals from '../studio/StuntVisuals.jsx'
+import {recordRaceReplay} from '../studio/replay.js'
 import {stepBattle,BATTLE_STEP,battleRanking,MAX_HAZARDS} from './simulation.js'
 const MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
-export function battleHud(state){
-  const p=state.actors[0],warnings=state.hazards.filter(h=>h.fuse>=0&&Math.hypot(h.x-p.x,h.z-p.z)<13)
-  return {tick:state.tick,seconds:state.tick/60,laps:state.laps,weather:state.weather.label,elevation:p.y||0,crashes:p.crashes||0,lap:Math.min(state.laps,p.lap),hp:p.hp,shield:p.shield,speed:p.speed,turbo:p.turbo||0,turboCount:p.turboCount||0,
-    respawn:p.respawn,bombCooldown:p.bombCooldown,mineCooldown:p.mineCooldown,rank:battleRanking(state).findIndex(a=>a.id==='player')+1,
+export function battleHud(state,viewerIndex=0){
+  const p=state.actors[viewerIndex]||state.actors[0],warnings=state.hazards.filter(h=>h.fuse>=0&&Math.hypot(h.x-p.x,h.z-p.z)<13)
+  return {tick:state.tick,seconds:state.tick/60,laps:state.laps,weather:state.weather.label,elevation:p.y||0,crashes:p.crashes||0,stuntScore:p.stuntScore||0,stuntCombo:p.stuntCombo||1,lap:Math.min(state.laps,p.lap),hp:p.hp,shield:p.shield,speed:p.speed,turbo:p.turbo||0,turboCount:p.turboCount||0,
+    respawn:p.respawn,bombCooldown:p.bombCooldown,mineCooldown:p.mineCooldown,rank:battleRanking(state).findIndex(a=>a.id===p.id)+1,
     damageTaken:p.damageTaken,knockouts:p.knockouts,totalBlasts:state.totalBlasts,warning:warnings.length?Math.min(...warnings.map(h=>h.fuse)):null,
     actors:state.actors.map(a=>({id:a.id,name:a.name,x:a.x,z:a.z,y:a.y,yaw:a.yaw,s:a.s,hp:a.hp,color:a.color,lap:Math.min(state.laps,a.lap),finished:a.finished})),
     powerups:state.powerups.filter(p=>p.cooldown<=0).length,notice:state.notice}
@@ -126,7 +128,7 @@ function TurboPickups({engineRef}){
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.84,0]}><ringGeometry args={[1.05,1.25,24]}/><meshBasicMaterial color="#f6ff79" side={THREE.DoubleSide} transparent opacity={.8}/></mesh>
   </group>)}</group>
 }
-function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish}){
+function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish,multiplayerRef,viewerIndex=0}){
   const {scene}=useGLTF(MODEL)
   const models=useMemo(()=>engineRef.current.state.actors.map(a=>{
     const source=scene.getObjectByName('PREFAB_kart_emerald');if(!source)throw new Error('Kart asset missing')
@@ -139,25 +141,28 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
   const weatherRef=useRef({}),playerRef=useRef(engineRef.current.state.actors[0])
   const temp=useMemo(()=>({desired:new THREE.Vector3(),target:new THREE.Vector3(),sky:new THREE.Color(),cloud:new THREE.Color('#7b8c9d')}),[])
   useEffect(()=>{onReady(true);return()=>models.forEach(m=>m.resources.dispose())},[models,onReady])
-  useLayoutEffect(()=>{if(phase==='paused')onHud(battleHud(engineRef.current.state))},[phase,onHud,engineRef])
+  useLayoutEffect(()=>{if(phase==='paused')onHud(battleHud(engineRef.current.state,viewerIndex))},[phase,onHud,engineRef])
   useFrame(({camera,scene},rawDt)=>{
     const engine=engineRef.current,dt=Math.min(.25,Math.max(0,rawDt))
-    if(phase==='racing'&&!engine.state.done){
+    if(phase==='racing'&&!engine.state.done&&viewerIndex!==1){
       engine.acc+=dt
       while(engine.acc>=BATTLE_STEP&&!engine.state.done){
-        engine.state=stepBattle(engine.state,inputRef.current);engine.acc-=BATTLE_STEP
+        engine.state=stepBattle(engine.state,inputRef.current,multiplayerRef?.current?.connected&&multiplayerRef.current.role==='host'?multiplayerRef.current.remoteInput:null);engine.acc-=BATTLE_STEP
+        if(engine.replay)recordRaceReplay(engine.replay,engine.state)
         inputRef.current.bomb=false;inputRef.current.mine=false
-        const event=engine.state.events.find(e=>e.actor==='player'&&['crash','damage','knockout','repair','lap','finished'].includes(e.kind))||engine.state.events.find(e=>e.actor==='player'&&e.kind==='deploy')
+        const event=engine.state.events.find(e=>e.actor==='player'&&['crash','damage','knockout','repair','lap','finished','stunt-smash','stunt-land','stunt-launch','turbo-pickup','turbo-bonus'].includes(e.kind))||engine.state.events.find(e=>e.actor==='player'&&e.kind==='deploy')
         if(event)engine.state.notice={...event,until:engine.state.tick+110}
       }
     }
-    const state=engine.state,player=state.actors[0];playerRef.current=player
+    const connection=multiplayerRef?.current
+    if(phase==='racing'&&connection?.connected&&connection.role==='host'&&engine.state.tick%8===0&&engine.sentTick!==engine.state.tick){engine.sentTick=engine.state.tick;connection.send({v:1,type:'state',tick:engine.state.tick,state:engine.state})}
+    const state=engine.state,player=state.actors[viewerIndex]||state.actors[0];playerRef.current=player
     weatherRef.current=state.weather
     temp.sky.set(track.sky).lerp(temp.cloud,state.weather.cloudCover*.7)
     scene.background.copy(temp.sky);scene.fog.color.copy(temp.sky)
     scene.fog.near=55+state.weather.visibility*45;scene.fog.far=150+state.weather.visibility*110
     state.actors.forEach((a,i)=>{
-      const root=roots.current[i];if(root){root.visible=a.hp>0;root.position.set(a.x,a.y||0,a.z);root.rotation.set(a.pitch||0,a.yaw,0,'YXZ')}
+      const root=roots.current[i];if(root){root.visible=a.hp>0;root.position.set(a.x,a.y||0,a.z);root.rotation.set(a.pitch||0,a.yaw+(a.air?.spin||0),0,'YXZ')}
       const bar=bars.current[i];if(bar){bar.visible=a.hp>0;bar.position.set(a.x,(a.y||0)+2.7,a.z);bar.quaternion.copy(camera.quaternion)}
       const fill=fills.current[i];if(fill){const ratio=Math.max(.001,a.hp/100);fill.scale.x=ratio;fill.position.x=-(1-ratio)*.85;fill.material.color.set(a.shield>0?'#65d9ff':a.hp>40?'#b8ec73':'#ff8275')}
       if(shields.current[i]){shields.current[i].visible=a.shield>0&&a.hp>0;shields.current[i].position.set(a.x,(a.y||0)+.08,a.z)}
@@ -169,7 +174,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
     if(engine.snap){camera.position.copy(temp.desired);engine.snap=false}else camera.position.lerp(temp.desired,1-Math.exp(-7*dt))
     camera.up.set(0,1,0);camera.lookAt(temp.target)
     hudTime.current+=dt
-    if(hudTime.current>.1){hudTime.current=0;onHud(battleHud(state))}
+    if(hudTime.current>.1){hudTime.current=0;onHud(battleHud(state,viewerIndex))}
     if(state.done&&!engine.sent){engine.sent=true;onFinish(state)}
   })
   return <>
@@ -181,6 +186,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
       <mesh ref={n=>{shields.current[i]=n}} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[1.3,1.42,24]}/><meshBasicMaterial color="#70ddff" transparent opacity={.5} depthWrite={false}/></mesh>
     </group>)}
     <HazardVisuals stateRef={engineRef} reduced={reduced}/>
+    <StuntVisuals stateRef={engineRef} reduced={reduced}/>
     <WeatherParticles clockRef={weatherRef} playerRef={playerRef} phase={phase==='racing'?'racing':'paused'} budget={budget}/>
   </>
 }

@@ -42,8 +42,8 @@ export default function TrackEditor({value,onUse,onClose}){
       <polygon points={poly} fill="none" stroke="#98ecba" strokeWidth={draft.width} strokeLinejoin="round"/>
       <polygon points={poly} fill="none" stroke="#eef9d4" strokeWidth=".7" strokeDasharray="3 5"/>
       {points.map((p,i)=><g key={i} transform={`translate(${p[0]} ${p[1]})`}>
-        <circle r={i===selected?6:4} stroke={i===selected?'#ffcd76':'#11252d'} strokeWidth="2" fill={i===0?'#f1fc90':p[2]>0?'#d6a5fb':'#7ce5f6'}
-          onPointerDown={e=>{e.stopPropagation();setSelected(i);setDrag(true);e.currentTarget.setPointerCapture(e.pointerId)}}/>
+        <circle r="13" fill="transparent" stroke="transparent" aria-label={`Move waypoint ${i+1}`} onPointerDown={e=>{e.stopPropagation();setSelected(i);setDrag(true);e.currentTarget.setPointerCapture(e.pointerId)}}/>
+        <circle r={i===selected?6:4} pointerEvents="none" stroke={i===selected?'#ffcd76':'#11252d'} strokeWidth="2" fill={i===0?'#f1fc90':p[2]>0?'#d6a5fb':'#7ce5f6'}/>
         {i===selected&&<text y="-10" fill="white" textAnchor="middle" fontSize="9">{i+1} · {p[2]}m</text>}
       </g>)}
     </svg>

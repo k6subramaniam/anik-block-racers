@@ -88,6 +88,15 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
   const nextCull = useRef(0)
   const lastWeather = useRef('clear')
   const { camera } = useThree()
+  // Freeze the visible timer on the exact simulation state at the pause
+  // transition. The normal throttled HUD paints at ~10Hz and could otherwise
+  // show a stale race time for one final update after the player pauses.
+  useLayoutEffect(()=>{
+    if(phase!=='paused')return
+    const s=race.current
+    elapsedHudRefresh.current=0
+    setHud(old=>({...old,elapsed:s.elapsed,lap:s.lap,checkpoint:s.checkpoint,coins:s.coins||0}))
+  },[phase,setHud,race])
   useLayoutEffect(()=>{
     battleStore.update(battleSnapshot(battleRef.current,phase,mode))
     if(phase!=='racing'){

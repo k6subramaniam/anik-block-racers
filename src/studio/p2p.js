@@ -14,7 +14,14 @@ export function validRacePacket(data){
  if(!data||typeof data!=='object'||data.v!==P2P_PROTOCOL)return false
  if(data.type==='input')return data.input&&typeof data.input==='object'
  if(data.type==='start')return typeof data.track==='string'&&data.track.length<=24&&Number.isInteger(data.laps)&&data.laps>=1&&data.laps<=10&&typeof data.weather==='string'&&data.weather.length<=20&&(!data.trackcode||data.trackcode.length<3000)
- if(data.type==='state')return Number.isInteger(data.tick)&&data.tick>=0&&data.tick<1_000_000&&data.state&&Array.isArray(data.state.actors)&&data.state.actors.length===4
+ if(data.type==='state'){
+  const s=data.state
+  return Number.isInteger(data.tick)&&data.tick>=0&&data.tick<1_000_000&&s&&Array.isArray(s.actors)&&s.actors.length===4&&
+   s.actors.every(a=>a&&typeof a.id==='string'&&a.id.length<=24&&
+     ['x','z','yaw','hp'].every(k=>Number.isFinite(a[k])&&Math.abs(a[k])<2000))&&
+   Array.isArray(s.hazards)&&s.hazards.length<=40&&Array.isArray(s.powerups)&&s.powerups.length<=12&&
+   Array.isArray(s.explosions)&&s.explosions.length<=24&&s.stunts&&Array.isArray(s.stunts.props)&&s.stunts.props.length<=20
+ }
  if(data.type==='ping')return true
  return false
 }

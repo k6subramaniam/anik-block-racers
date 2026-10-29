@@ -30,7 +30,7 @@ jobs:
       - name: Test real gameplay, replays, sharing and mobile layouts
         run: npm run test:browser
       - name: Package tested source snapshot
-        run: git archive --format=zip --prefix=anik-block-racers-v3.2/ HEAD > test-results/ANIK_Block_Racers_Battle_Race_v3.2_Source.zip
+        run: git archive --format=zip --prefix=anik-block-racers-v3.3/ HEAD > test-results/ANIK_Block_Racers_Multilevel_v3.3_Source.zip
       - name: Save browser evidence
         if: always()
         uses: actions/upload-artifact@v4

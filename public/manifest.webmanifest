@@ -1,25 +1,86 @@
 {
   "id": "./",
-  "name": "ANIK Block Racers — Battle Race",
+  "name": "ANIK Block Racers \u2014 Multilevel Racing",
   "short_name": "ANIK Racers",
-  "description": "Arcade battle racing, Bot Smash challenges, and a large voxel open world.",
+  "description": "Five battle track levels, changing weather, vehicle crashes and your choice of race laps.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "landscape",
   "background_color": "#101a20",
   "theme_color": "#101a20",
-  "categories": ["games", "entertainment"],
+  "categories": [
+    "games",
+    "entertainment"
+  ],
   "icons": [
-    {"src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    {"name": "Battle Race — Mines & Bombs", "short_name": "Battle Race", "url": "./?view=battle", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
-    {"name": "Daily Bot Smash", "short_name": "Daily Smash", "url": "./?source=shortcut-showdown", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
-    {"name": "Explore the Open World", "short_name": "Explore World", "url": "./?source=shortcut-explore", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]},
-    {"name": "Race Voxel Valley", "short_name": "Start Race", "url": "./?source=shortcut", "icons": [{"src": "./icons/icon-192.png", "sizes": "192x192"}]}
+    {
+      "name": "Battle Race \u2014 Mines & Bombs",
+      "short_name": "Battle Race",
+      "url": "./?view=battle",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Daily Bot Smash",
+      "short_name": "Daily Smash",
+      "url": "./?source=shortcut-showdown",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Explore the Open World",
+      "short_name": "Explore World",
+      "url": "./?source=shortcut-explore",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Race Voxel Valley",
+      "short_name": "Start Race",
+      "url": "./?source=shortcut",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

@@ -7,8 +7,8 @@ const copy=value=>structuredClone(value)
 function vulnerable(){const s=createBattle();s.actors=s.actors.map(a=>({...a,shield:0}));return s}
 function explodeAt(s,p,type='bomb',owner=null){s.hazards=[{id:'fixture',type,owner,x:p.x,z:p.z,y:.2,fuse:0,arm:0,cooldown:0,persistent:false,life:5}];advanceHazards(s,copy(s.actors));return s}
 
-test('three distinct closed circuits have safe start grids, gates, and repair pads',()=>{
- assert.equal(BATTLE_TRACKS.length,3)
+test('five distinct closed circuits have safe start grids, gates, and repair pads',()=>{
+ assert.equal(BATTLE_TRACKS.length,5)
  for(const spec of BATTLE_TRACKS){
   const t=battleTrack(spec.id);assert.ok(t.length>400);assert.equal(t.gates.length,8);assert.equal(t.repairs.length,2)
   assert.ok(t.path.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.z)))

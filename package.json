@@ -1,9 +1,9 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "3.2.0",
+  "version": "3.3.0",
   "type": "module",
-  "description": "ANIK Battle Race: three tracks, arcade landmines, throwable bombs, shared player and AI blast damage, checkpoint recovery; all earlier modes preserved",
+  "description": "Multilevel Battle Race: vehicle contact physics, five track levels, dynamic weather and configurable 1\u201310 lap races",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/generate-service-worker.mjs",

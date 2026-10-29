@@ -158,7 +158,7 @@ export function WeatherParticles({clockRef,playerRef,phase,budget}){
     if(!r||!s||!w)return
     r.visible=active&&env.rain>.03;s.visible=active&&env.snow>.03;w.visible=active&&env.wind>.06
     const p=playerRef.current||{x:0,z:0}
-    r.position.set(p.x,0,p.z);s.position.set(p.x,0,p.z);w.position.set(p.x,0,p.z)
+    r.position.set(p.x,p.y||0,p.z);s.position.set(p.x,p.y||0,p.z);w.position.set(p.x,p.y||0,p.z)
     const step=Math.min(.06,dt)
     if(r.visible){
       const a=rainGeo.attributes.position.array

@@ -21,6 +21,6 @@ export default function Experience(){
     history.replaceState({},'',url);setView(next)
   }
   return <Suspense fallback={<div className="sd-boot">ANIK / BLOCK RACERS<br/><strong>LOADING YOUR GAME…</strong></div>}>
-    {view==='battle'?<BattleGame onExit={()=>switchView('showdown')}/>:view==='world'?<div className="sd-legacy"><OriginalGame/><button className="sd-return" onClick={()=>switchView('showdown')} data-testid="back-to-showdown">↗ BOT SMASH · 60s</button></div>:<div className="sd-hub"><ShowdownGame invitation={invitation} onExit={()=>switchView('world')}/><button className="br-launch" onClick={()=>switchView('battle')} data-testid="open-battle"><span aria-hidden="true">⚑</span><span>BATTLE RACE<small>3 tracks · Mines · Bombs</small></span><span aria-hidden="true">↗</span></button></div>}
+    {view==='battle'?<BattleGame onExit={()=>switchView('showdown')}/>:view==='world'?<div className="sd-legacy"><OriginalGame/><button className="sd-return" onClick={()=>switchView('showdown')} data-testid="back-to-showdown">↗ BOT SMASH · 60s</button></div>:<div className="sd-hub"><ShowdownGame invitation={invitation} onExit={()=>switchView('world')}/><button className="br-launch" onClick={()=>switchView('battle')} data-testid="open-battle"><span aria-hidden="true">⚑</span><span>BATTLE RACE<small>5 levels · Crashes · Choose laps</small></span><span aria-hidden="true">↗</span></button></div>}
   </Suspense>
 }

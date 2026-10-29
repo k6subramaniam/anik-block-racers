@@ -2,6 +2,7 @@ import React,{Suspense,useState} from 'react'
 import {challengeFromSearch} from './showdown/rules.js'
 import './showdown/styles.css'
 import './battle/styles.css'
+import './studio/studio.css'
 const OriginalGame=React.lazy(()=>import('./App.jsx'))
 const ShowdownGame=React.lazy(()=>import('./showdown/Game.jsx'))
 const BattleGame=React.lazy(()=>import('./battle/Game.jsx'))

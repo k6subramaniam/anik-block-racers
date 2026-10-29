@@ -9,11 +9,11 @@ import {stepBattle,BATTLE_STEP,battleRanking,MAX_HAZARDS} from './simulation.js'
 const MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 export function battleHud(state){
   const p=state.actors[0],warnings=state.hazards.filter(h=>h.fuse>=0&&Math.hypot(h.x-p.x,h.z-p.z)<13)
-  return {tick:state.tick,seconds:state.tick/60,laps:state.laps,weather:state.weather.label,elevation:p.y||0,crashes:p.crashes||0,lap:Math.min(state.laps,p.lap),hp:p.hp,shield:p.shield,speed:p.speed,
+  return {tick:state.tick,seconds:state.tick/60,laps:state.laps,weather:state.weather.label,elevation:p.y||0,crashes:p.crashes||0,lap:Math.min(state.laps,p.lap),hp:p.hp,shield:p.shield,speed:p.speed,turbo:p.turbo||0,turboCount:p.turboCount||0,
     respawn:p.respawn,bombCooldown:p.bombCooldown,mineCooldown:p.mineCooldown,rank:battleRanking(state).findIndex(a=>a.id==='player')+1,
     damageTaken:p.damageTaken,knockouts:p.knockouts,totalBlasts:state.totalBlasts,warning:warnings.length?Math.min(...warnings.map(h=>h.fuse)):null,
     actors:state.actors.map(a=>({id:a.id,name:a.name,x:a.x,z:a.z,y:a.y,yaw:a.yaw,s:a.s,hp:a.hp,color:a.color,lap:Math.min(state.laps,a.lap),finished:a.finished})),
-    notice:state.notice}
+    powerups:state.powerups.filter(p=>p.cooldown<=0).length,notice:state.notice}
 }
 function batchData(mesh,parts){
   const d=new THREE.Object3D(),c=new THREE.Color()
@@ -115,6 +115,17 @@ function HazardVisuals({stateRef,reduced}){
     <instancedMesh ref={shock} args={[null,null,24]} frustumCulled={false}><ringGeometry args={[.90,1,24]}/><meshBasicMaterial transparent opacity={.45} depthWrite={false} side={THREE.DoubleSide}/></instancedMesh>
   </group>
 }
+function TurboPickups({engineRef}){
+  const refs=useRef([])
+  useFrame(({clock})=>{
+    const pads=engineRef.current.state.powerups
+    refs.current.forEach((g,i)=>{if(!g)return;const p=pads[i];g.visible=!!p&&p.cooldown<=0;if(g.visible){g.position.set(p.x,p.y+.95+Math.sin(clock.elapsedTime*3+i)*.22,p.z);g.rotation.y=clock.elapsedTime*1.7+i*.4}})
+  })
+  return <group name="ARCADE_TURBO_PICKUPS">{engineRef.current.state.powerups.map((p,i)=><group key={p.id} ref={el=>{refs.current[i]=el}} position={[p.x,p.y+1,p.z]}>
+    <mesh rotation={[0,0,Math.PI/4]}><octahedronGeometry args={[.9,0]}/><meshBasicMaterial color="#3fe7ff" toneMapped={false}/></mesh>
+    <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.84,0]}><ringGeometry args={[1.05,1.25,24]}/><meshBasicMaterial color="#f6ff79" side={THREE.DoubleSide} transparent opacity={.8}/></mesh>
+  </group>)}</group>
+}
 function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish}){
   const {scene}=useGLTF(MODEL)
   const models=useMemo(()=>engineRef.current.state.actors.map(a=>{
@@ -163,6 +174,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
   })
   return <>
     <RaceTrack track={track}/>
+    <TurboPickups engineRef={engineRef}/>
     {models.map((m,i)=><group key={i}>
       <group ref={n=>{roots.current[i]=n}}><primitive object={m.model} dispose={null}/></group>
       <group ref={n=>{bars.current[i]=n}}><mesh><planeGeometry args={[1.85,.23]}/><meshBasicMaterial color="#193038"/></mesh><mesh ref={n=>{fills.current[i]=n}} position={[0,0,.01]}><planeGeometry args={[1.7,.13]}/><meshBasicMaterial color="#cafa6a"/></mesh></group>

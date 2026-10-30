@@ -1,5 +1,6 @@
-// Procedural game audio: kart engine, event sound effects and a chiptune soundtrack.
-// Everything is synthesized with Web Audio, so nothing extra is downloaded.
+// Game audio: kart engine, event sound effects and background music.
+// The engine and effects are synthesized with Web Audio. Music is a Higgsfield-generated
+// loop (public/audio/music.mp3); the synthesized chiptune plays if that file cannot load.
 import { MAX_SPEED } from './simulation.js'
 
 let sharedCtx = null
@@ -56,8 +57,13 @@ export const MUSIC_BARS = [
 ]
 export const midiToHz = note => 440 * 2 ** ((note - 69) / 12)
 
-export function createSoundEngine() {
+export const MUSIC_FILE = 'music.mp3'
+// The track opens with a ~4 s intro, then a 4-bar groove at 120 BPM that loops forever.
+export const MUSIC_LOOP = { start: 4.39, end: 12.39 }
+
+export function createSoundEngine(baseUrl = '/') {
   let ctx = null, master = null, sfxBus = null, musicBus = null, noiseBuffer = null
+  let musicBuffer = null, musicSource = null, musicLoading = null, musicIntense = false, musicFailed = false
   let engine = null, sfxOn = true, musicOn = true, musicActive = false, musicTimer = null
   let nextStepTime = 0, step = 0
 
@@ -137,8 +143,43 @@ export function createSoundEngine() {
     }
   }
 
+  function applyMusicGain() {
+    // A full mixed track needs more gain than the sparse synthesized voices.
+    if (musicBus) musicBus.gain.setTargetAtTime((musicIntense ? 1 : 0.5) * (musicBuffer ? 0.5 : 0.32), ctx.currentTime, 0.3)
+  }
+
+  function loadMusic() {
+    if (musicLoading) return
+    musicLoading = fetch(`${baseUrl}audio/${MUSIC_FILE}`)
+      .then(response => response.ok ? response.arrayBuffer() : Promise.reject(new Error('missing music')))
+      .then(data => ctx.decodeAudioData(data))
+      .then(buffer => {
+        musicBuffer = buffer
+        applyMusicGain()
+        updateMusic()
+      })
+      .catch(() => { musicFailed = true; applyMusicGain(); updateMusic() })
+  }
+
   function updateMusic() {
     const shouldPlay = ctx && musicOn && musicActive
+    if (musicBuffer) {
+      if (shouldPlay && !musicSource) {
+        musicSource = ctx.createBufferSource()
+        musicSource.buffer = musicBuffer
+        musicSource.loop = true
+        musicSource.loopStart = MUSIC_LOOP.start
+        musicSource.loopEnd = MUSIC_LOOP.end
+        musicSource.connect(musicBus)
+        musicSource.start()
+      } else if (!shouldPlay && musicSource) {
+        try { musicSource.stop() } catch {}
+        musicSource = null
+      }
+      return
+    }
+    // Until the track loads, stay quiet; fall back to the synthesized chiptune only if it fails.
+    if (!musicFailed) return
     if (shouldPlay && !musicTimer) {
       nextStepTime = ctx.currentTime + 0.05
       musicTimer = setInterval(scheduleMusic, 25)
@@ -155,8 +196,9 @@ export function createSoundEngine() {
       if (!master) {
         master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination)
         sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? 1 : 0; sfxBus.connect(master)
-        musicBus = ctx.createGain(); musicBus.gain.value = 0.32; musicBus.connect(master)
+        musicBus = ctx.createGain(); musicBus.gain.value = 0.16; musicBus.connect(master)
         startEngine()
+        loadMusic()
       }
       if (ctx.state === 'suspended') ctx.resume().catch(() => {})
       updateMusic()
@@ -182,7 +224,8 @@ export function createSoundEngine() {
     // Racing gets the full soundtrack; menus and pause get a quieter bed.
     setMusicState(active, intense) {
       musicActive = active
-      if (musicBus) musicBus.gain.setTargetAtTime(intense ? 0.32 : 0.16, ctx.currentTime, 0.3)
+      musicIntense = intense
+      applyMusicGain()
       updateMusic()
     },
     suspend() { ctx?.suspend?.().catch(() => {}) },

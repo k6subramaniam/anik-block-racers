@@ -1,15 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {RIVALS,CRITTERS,makeNpcs,advanceNpcs,applyRamming,trackAt,TRACK_LENGTH} from '../game/npcAI.js'
-import {nearestRoad} from '../game/track.js'
-import {initialRaceState} from '../game/simulation.js'
+import {nearestRoad,ROAD_WIDTH,LANE_OFFSETS} from '../game/track.js'
+import {initialRaceState,SAFE_ROAD_HALF_WIDTH} from '../game/simulation.js'
 
 test('three AI racers start safely on the real track',()=>{
   const n=makeNpcs('race')
   assert.equal(n.length,3)
   assert.deepEqual(n.map(a=>a.kind),['racer','racer','racer'])
-  for(const npc of n){assert.ok(nearestRoad(npc).distance<3);assert.ok(npc.health>0)}
-  assert.ok(TRACK_LENGTH>140)
+  for(const npc of n){assert.ok(nearestRoad(npc).distance<ROAD_WIDTH/2-1);assert.ok(npc.health>0)}
+  // Rivals line up in different lanes of the four-lane grid.
+  assert.equal(new Set(n.map(a=>a.lane)).size,3);assert.ok(n.every(a=>LANE_OFFSETS.includes(a.lane)))
+  assert.ok(TRACK_LENGTH>300)
 })
 test('free-roam includes eight unique intelligent wildlife bots',()=>{
   const n=makeNpcs('explore')
@@ -24,7 +26,7 @@ test('AI racers move around the course without leaving the track',()=>{
   for(let i=0;i<5000;i++)n=advanceNpcs(n,.05,player,'race')
   for(const racer of n){
     assert.ok(Number.isFinite(racer.x)&&Number.isFinite(racer.z))
-    assert.ok(nearestRoad(racer).distance<2.1)
+    assert.ok(nearestRoad(racer).distance<SAFE_ROAD_HALF_WIDTH)
     assert.ok(racer.travel>200)
   }
 })

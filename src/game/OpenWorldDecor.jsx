@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useRef} from 'react'
 import {useFrame} from '@react-three/fiber'
 import * as THREE from 'three'
-import {nearestRoad} from './track.js'
+import {nearestRoad,ROAD_WIDTH} from './track.js'
 import {LANDMARK_OBSTACLES,RELICS,WORLD_BOUNDS,ZONES} from './openWorld.js'
 
 /** Instanced ambient vegetation adds life across the large world at just a
@@ -17,7 +17,7 @@ const PATCHES=(()=>{
   const rng=deterministicRandom(61029), bushes=[],rocks=[],mushrooms=[]
   for(let k=0;k<850;k++){
     const x=(rng()-.5)*285,z=(rng()-.5)*238
-    if(nearestRoad({x,z}).distance<6.2)continue
+    if(nearestRoad({x,z}).distance<ROAD_WIDTH/2+2.6)continue
     if(Math.abs(x)<6 && z< -33 && z> -110)continue // central portal pathway
     if(ZONES.some(p=>Math.hypot(p.x-x,p.z-z)<13))continue
     if(LANDMARK_OBSTACLES.some(o=>Math.hypot(o.x-x,o.z-z)<o.radius+3))continue

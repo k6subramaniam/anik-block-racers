@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {initialBattle,stepBattle,TRACK_MINES,TRACK_BARRELS,SUPPLY_PADS,RACE_HAZARDS,BATTLE_LIMITS,trackPose,segmentGap,safeTrackPoint} from '../battle/rules.js'
-import {initialRaceState,advanceKart,SAFE_ROAD_HALF_WIDTH} from '../game/simulation.js'
+import {initialRaceState,advanceKart,SAFE_ROAD_HALF_WIDTH,SPAWN} from '../game/simulation.js'
 import {makeNpcs,advanceNpcs} from '../game/npcAI.js'
 import {nearestRoad,TRACK} from '../game/track.js'
 const player=()=>initialRaceState()
@@ -12,7 +12,7 @@ function tick(s,p=player(),bots=[],actions={},dt=.05,options={}){return stepBatt
 test('track has eight visible lane mines, six barrels and four distinct supply pads',()=>{
  assert.equal(TRACK_MINES.length,8);assert.equal(TRACK_BARRELS.length,6);assert.equal(SUPPLY_PADS.length,4)
  assert.equal(new Set(RACE_HAZARDS.map(h=>h.id)).size,14)
- for(const h of RACE_HAZARDS){assert.ok(nearestRoad(h).distance<3);assert.ok(Math.hypot(h.x-8,h.z-18.2)>6)}
+ for(const h of RACE_HAZARDS){assert.ok(nearestRoad(h).distance<3);assert.ok(Math.hypot(h.x-SPAWN.x,h.z-SPAWN.z)>6)}
 })
 test('new race begins with full health, ammunition and safe-start shield',()=>{
  const b=initialBattle();assert.equal(b.health,100);assert.equal(b.bombs,3);assert.equal(b.mines,2);assert.equal(b.shield,3)

@@ -1,7 +1,7 @@
 /** Original 16 x 16 pixel-art materials and deterministic lightweight voxel scenery.
  * No Minecraft/Mojang art or texture assets are used. Pure, Node-testable data.
  */
-import { nearestRoad } from './track.js'
+import { nearestRoad, ROAD_WIDTH } from './track.js'
 import { LANDMARK_OBSTACLES, ZONES } from './openWorld.js'
 import { WATER_BODIES } from './water.js'
 
@@ -107,7 +107,8 @@ function distanceToSegment(x, z, a, b) {
 }
 export function isSafeVoxelSceneryPosition(x, z) {
   if (Math.abs(x) > 143 || Math.abs(z) > 118) return false
-  if (nearestRoad({ x, z }).distance < 10) return false
+  // Keep canopies well clear of the four-lane road edge.
+  if (nearestRoad({ x, z }).distance < ROAD_WIDTH / 2 + 5) return false
   if (WATER_BODIES.some(b => ((x - b.x) / (b.rx + 4)) ** 2 + ((z - b.z) / (b.rz + 4)) ** 2 < 1)) return false
   if (ZONES.some(t => Math.hypot(t.x - x, t.z - z) < t.radius * .78)) return false
   if (LANDMARK_OBSTACLES.some(o => Math.hypot(o.x - x, o.z - z) < (o.radius || 2) + 4)) return false

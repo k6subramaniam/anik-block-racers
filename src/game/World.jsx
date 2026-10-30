@@ -3,7 +3,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
-import { TRACK, trackBarriers } from './track.js'
+import { trackBarriers, nearestRoad, ROAD_WIDTH, BOOST_PADS, COINS } from './track.js'
+import RaceCircuit from './RaceCircuit.jsx'
 import { advanceKart, initialRaceState, SPAWN, MAX_SPEED } from './simulation.js'
 import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } from './openWorld.js'
 import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
@@ -23,8 +24,10 @@ import BattleFX from '../battle/BattleFX.jsx'
 
 const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0GlMG/26710d53-03e1-4327-b94a-59f07e46a89f.glb'
 const walls = trackBarriers()
-const boostLocations = [28,70,105,143].map(index => ({index, ...TRACK[index]}))
-const coinLocations = [12,21,34,42,57,64,81,93,116,123,133,151].map(index => ({index, ...TRACK[index]}))
+const boostLocations = BOOST_PADS
+const coinLocations = COINS
+// The Higgsfield scene's original two-lane road kit; RaceCircuit draws the four-lane circuit instead.
+const OLD_RACE_KIT = ['TRACK_','PREFAB_coin_','PREFAB_boost_pad_','PREFAB_checkpoint_gate_','PROP_start_','PROP_ANIK_','TRIGGER_']
 
 function makeGameAssets(scene) {
   const track = scene.clone(true)
@@ -39,6 +42,7 @@ function makeGameAssets(scene) {
   track.updateMatrixWorld(true)
   track.traverse(child => {
     if (child.name === 'PREFAB_kart_emerald' || child.name === 'PREFAB_kart_amber' || child.isCamera || child.isLight) child.visible = false
+    if (OLD_RACE_KIT.some(prefix => child.name.startsWith(prefix))) child.visible = false
     if (child.type === 'Object3D' && (child.name.startsWith('OW_HERO_') || child.name.startsWith('OW_PROP_BLOCKHAVEN_') || child.name.startsWith('OW_PROP_VILLAGE_') || child.name.startsWith('OW_PROP_MARKET_')) && child.children.length) cullRoots.push(child)
     if (child.isMesh) {
       child.receiveShadow = child.name.startsWith('TRACK_') || child.name.startsWith('ENV_')
@@ -48,7 +52,10 @@ function makeGameAssets(scene) {
     if (child.type === 'Object3D' && (child.name.startsWith('PREFAB_voxel_pine_') || child.name.startsWith('PREFAB_stone_boulder_') || child.name === 'PREFAB_central_castle')) {
       const p = new THREE.Vector3()
       child.getWorldPosition(p)
-      objects.push({ id: child.name, x: p.x, z: p.z, radius: child.name.includes('castle') ? 4.9 : child.name.includes('boulder') ? 1.15 : .6 })
+      const radius = child.name.includes('castle') ? 4.9 : child.name.includes('boulder') ? 1.15 : .6
+      // Scenery that the wider, longer circuit now runs through is cleared away.
+      if (nearestRoad(p).distance < ROAD_WIDTH / 2 + radius + 1.5) { child.visible = false; return }
+      objects.push({ id: child.name, x: p.x, z: p.z, radius })
     }
   })
   const voxelStyle = voxelizeSceneMaterials(track, kart)
@@ -315,6 +322,7 @@ function LoadedLevel(props){
   useEffect(()=>{props.onReady(true)},[props.onReady])
   return <>
     <primitive object={track} />
+    <RaceCircuit />
     <VoxelLandscape budget={props.budget} />
     <OpenWorldDecor />
     <FrontierWorld playerRef={playerRef} budget={props.budget}/>

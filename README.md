@@ -5,7 +5,7 @@
 ## Game modes
 
 - **Explore Open World:** roam a bounded ~312 × 264 metre terrain at your own pace, across five zones: Neon City, Crystal Ridge, Sunset Canyon, Ember Peaks, and Portal Grove. Discover each location, collect five floating relics, fast-travel from the map, and drive through the grove portal to return to Voxel Valley. Landmarks have simplified collision volumes, an exterior world border, and a lava rescue area.
-- **Race 3 Laps:** original Voxel Valley time trial. Drive the existing 7.2 metre roadway, pass the two checkpoints in order, and race for your best lap. Original speed boosts, coins and road collisions are retained.
+- **Race 3 Laps:** Voxel Valley Grand Circuit time trial against three AI rivals. The 325 m lap is a four-lane, 14.4 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
 
 ## Cool new Higgsfield 3D assets
 

@@ -7,7 +7,8 @@ import {advanceWater, WATER_DESTINATIONS, WATER_BODIES} from './water.js'
 import {EXPANDED_BOUNDS, FRONTIER_ZONES, FRONTIER_OBSTACLES} from './frontier.js'
 
 export const WORLD_BOUNDS = EXPANDED_BOUNDS
-export const EXPLORE_SPAWN = Object.freeze({x:5,z:-37,yaw:0})
+// North of the Grand Circuit, facing the Portal Grove road.
+export const EXPLORE_SPAWN = Object.freeze({x:5,z:-56,yaw:0})
 
 export const ZONES = Object.freeze([
   {id:'city',name:'NEON CITY',label:'Skyline district',icon:'◆',color:'#fa62da',x:105,z:-57,radius:30,spawn:{x:105,z:-52,yaw:0}},
@@ -105,7 +106,7 @@ export function advanceExplore(state,input,dt,obstacles=[],weather=null){
     }
   }
   if(next.portalCooldown<=0 && Math.abs(next.x)<4 && state.z>=-107 && next.z< -107){
-    next={...next,x:SPAWN.x,z:SPAWN.z,yaw:0,speed:0,portalCooldown:5,event:'portal',zoneName:'VOXEL VALLEY'}
+    next={...next,x:SPAWN.x,z:SPAWN.z,yaw:SPAWN.yaw,speed:0,portalCooldown:5,event:'portal',zoneName:'VOXEL VALLEY'}
   }
   if(Math.hypot(next.x-120,next.z-118)<10.5){
     next={...next,x:102,z:76,speed:0,portalCooldown:3,event:'lava'}

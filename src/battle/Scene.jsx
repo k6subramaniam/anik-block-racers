@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import {createPixelTexture,voxelizeSceneMaterials} from '../game/VoxelVisuals.jsx'
 import {WeatherParticles} from '../game/WorldAtmosphere.jsx'
 import {atDistance} from './tracks.js'
+import {LEVEL_ART} from './levelArt.js'
+import LevelScenery from './LevelScenery.jsx'
 import StuntVisuals from '../studio/StuntVisuals.jsx'
 import {recordRaceReplay} from '../studio/replay.js'
 import {stepBattle,BATTLE_STEP,battleRanking,MAX_HAZARDS} from './simulation.js'
@@ -34,9 +36,9 @@ function roadGeometry(track){
 function RaceTrack({track}){
   const edge=useRef()
   const resources=useMemo(()=>{
-    const g=roadGeometry(track),road=createPixelTexture(track.id==='frost'?'ice':'road',3,1),grass=createPixelTexture(track.id==='canyon'?'sand':track.id==='frost'?'ice':'grass',80,80)
+    const g=roadGeometry(track),road=createPixelTexture(track.id==='frost'?'ice':'road',3,1),grass=createPixelTexture(['canyon','summit'].includes(track.id)?'sand':track.id==='frost'?'ice':'grass',80,80)
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128
-    const c=canvas.getContext('2d');c.fillStyle='#152c33';c.fillRect(0,0,512,128);c.fillStyle=track.color;c.font='bold 46px system-ui';c.textAlign='center';c.fillText('BATTLE RACE',256,62);c.fillStyle='white';c.font='22px system-ui';c.fillText('START / FINISH',256,103)
+    const c=canvas.getContext('2d');c.fillStyle='#152c33';c.fillRect(0,0,512,128);c.fillStyle=track.color;c.font='bold 46px system-ui';c.textAlign='center';c.fillText('ANIK BLOCK RACERS',256,62);c.fillStyle='white';c.font='22px system-ui';c.fillText('START / FINISH',256,103)
     const sign=new THREE.CanvasTexture(canvas);sign.colorSpace=THREE.SRGBColorSpace
     return {g,road,grass,sign}
   },[track])
@@ -44,13 +46,13 @@ function RaceTrack({track}){
     const list=[]
     for(let s=0;s<track.length;s+=3.8)for(const side of [-1,1]){
       const p=atDistance(track,s,side*(track.width/2+.1))
-      list.push({x:p.x,y:p.y+(p.y>1?.65:.2),z:p.z,w:.45,h:p.y>1?1.3:.4,d:3.6,yaw:p.yaw,color:Math.floor(s/3.8)%2?track.color:'#f0f4dd'})
+      list.push({x:p.x,y:p.y+(p.y>1?.65:.2),z:p.z,w:.45,h:p.y>1?1.3:.4,d:3.6,yaw:p.yaw,color:LEVEL_ART[track.id]?.curbs[Math.floor(s/3.8)%LEVEL_ART[track.id].curbs.length] || (Math.floor(s/3.8)%2?track.color:'#f0f4dd')})
     }
     for(let s=0;s<track.length;s+=22){
       const p=atDistance(track,s)
       if(p.y>3)for(const side of [-1,1]){const q=atDistance(track,s,side*(track.width/2-1.5));list.push({x:q.x,y:q.y/2,z:q.z,w:1.4,h:q.y,d:1.4,color:'#59717b'})}
     }
-    for(let i=0;i<75;i++){
+    if(track.id==='custom')for(let i=0;i<75;i++){
       const a=i*Math.PI*2/75,x=Math.cos(a)*(105+(i%4)*5),z=Math.sin(a)*(94+(i%3)*8),h=4+i%5
       list.push({x,y:h/2,z,w:1.6,h,d:1.6,color:track.id==='canyon'?'#a7764d':'#805e3f'})
       list.push({x,y:h+1,z,w:5,h:3,d:5,color:track.id==='frost'?'#d6efeb':track.id==='canyon'?'#c98f62':'#477e3e'})
@@ -62,8 +64,8 @@ function RaceTrack({track}){
   useEffect(()=>{batchData(edge.current,parts)},[parts])
   useEffect(()=>()=>{resources.g.dispose();resources.road.dispose();resources.grass.dispose();resources.sign.dispose()},[resources])
   return <group name={`BATTLE_TRACK_${track.id}`}>
-    <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.02,0]}><planeGeometry args={[300,280]}/><meshStandardMaterial map={resources.grass} color={track.ground} roughness={1}/></mesh>
-    <mesh geometry={resources.g} receiveShadow><meshStandardMaterial map={resources.road} color={track.id==='frost'?'#a0c7d4':'#697578'} roughness={.9} side={THREE.DoubleSide}/></mesh>
+    <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.02,0]}><planeGeometry args={[450,450]}/><meshStandardMaterial map={resources.grass} color={LEVEL_ART[track.id]?.ground||track.ground} roughness={1}/></mesh>
+    <mesh geometry={resources.g} receiveShadow><meshStandardMaterial map={resources.road} color={LEVEL_ART[track.id]?.road||'#697578'} roughness={.9} side={THREE.DoubleSide}/></mesh>
     <instancedMesh ref={edge} args={[null,null,parts.length]}><boxGeometry args={[1,1,1]}/><meshStandardMaterial roughness={1}/></instancedMesh>
     {track.gates.map(g=><group key={g.index} position={[g.x,g.y,g.z]} rotation={[0,g.yaw,0]}>
       {[-1,1].map(side=><group key={side} position={[side*(track.width/2+.7),0,0]}>
@@ -158,7 +160,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
     if(phase==='racing'&&connection?.connected&&connection.role==='host'&&engine.state.tick%8===0&&engine.sentTick!==engine.state.tick){engine.sentTick=engine.state.tick;connection.send({v:1,type:'state',tick:engine.state.tick,state:engine.state})}
     const state=engine.state,player=state.actors[viewerIndex]||state.actors[0];playerRef.current=player
     weatherRef.current=state.weather
-    temp.sky.set(track.sky).lerp(temp.cloud,state.weather.cloudCover*.7)
+    temp.sky.set(LEVEL_ART[track.id]?.sky||track.sky).lerp(temp.cloud,state.weather.cloudCover*.7)
     scene.background.copy(temp.sky);scene.fog.color.copy(temp.sky)
     scene.fog.near=55+state.weather.visibility*45;scene.fog.far=150+state.weather.visibility*110
     state.actors.forEach((a,i)=>{
@@ -179,6 +181,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
   })
   return <>
     <RaceTrack track={track}/>
+    <LevelScenery track={track} budget={budget}/>
     <TurboPickups engineRef={engineRef}/>
     {models.map((m,i)=><group key={i}>
       <group ref={n=>{roots.current[i]=n}}><primitive object={m.model} dispose={null}/></group>
@@ -192,8 +195,8 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
 }
 export default function BattleScene(props){
   return <Canvas dpr={Math.min(props.budget.dpr,1.35)} shadows={props.budget.shadows} camera={{position:[100,95,110],fov:56,near:.1,far:400}} gl={{alpha:false,antialias:props.budget.antialias,powerPreference:'high-performance'}}>
-    <color attach="background" args={[props.track.sky]}/><fog attach="fog" args={[props.track.sky,100,260]}/>
-    <ambientLight intensity={1.15}/><hemisphereLight args={['#e1efff','#70805a',.9]}/><directionalLight position={[-30,60,35]} intensity={1.9}/>
+    <color attach="background" args={[LEVEL_ART[props.track.id]?.sky||props.track.sky]}/><fog attach="fog" args={[LEVEL_ART[props.track.id]?.sky||props.track.sky,100,260]}/>
+    <ambientLight intensity={props.track.id==='summit'?.74:1.15}/><hemisphereLight args={['#e1efff','#70805a',.9]}/><directionalLight position={[-30,60,35]} intensity={props.track.id==='summit'?1.05:1.9}/>
     <Suspense fallback={null}><LoadedRace {...props}/></Suspense>
   </Canvas>
 }

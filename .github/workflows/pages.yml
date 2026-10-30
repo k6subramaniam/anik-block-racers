@@ -2,6 +2,8 @@ name: Build and publish Samsung Galaxy game
 on:
   push:
     branches: [main, feature/bot-smash-v3, feature/bigger-world-v3-1, feature/battle-race-v3-2, feature/arcade-hazards-v3-2, feature/creator-studio-v4, feature/one-tap-invites-v4-1]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

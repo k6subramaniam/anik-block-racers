@@ -31,6 +31,14 @@ export const SFX_FOR_EVENT = {
   portal: 'sparkle',
   travel: 'sparkle',
   'water-splash': 'splash',
+  'item-pickup': 'sparkle',
+  'item-turbo': 'boost',
+  'item-shield': 'chime',
+  'rocket-launch': 'rocket',
+  'rival-rocket': 'rocket',
+  'oil-dropped': 'splash',
+  'oil-spin': 'spin',
+  'rival-spin': 'spin',
 }
 
 export function sfxFor(event) {
@@ -129,6 +137,8 @@ export function createSoundEngine(baseUrl = '/') {
     splash: () => { burst({ duration: 0.7, volume: 0.35, filter: 'bandpass', from: 2400, to: 300 }); tone({ type: 'sine', from: 320, to: 90, duration: 0.3, volume: 0.15 }) },
     countLow: () => tone({ from: 440, duration: 0.18, volume: 0.14 }),
     countHigh: () => tone({ from: 880, duration: 0.4, volume: 0.16 }),
+    rocket: () => { burst({ duration: 0.6, volume: 0.22, filter: 'bandpass', from: 900, to: 3800 }); tone({ type: 'sawtooth', from: 220, to: 660, duration: 0.5, volume: 0.07 }) },
+    spin: () => { tone({ type: 'triangle', from: 620, to: 140, duration: 0.55, volume: 0.16 }); burst({ duration: 0.4, volume: 0.15, from: 2000, to: 300 }) },
     tune: () => { burst({ duration: 0.28, volume: 0.16, filter: 'bandpass', from: 4200, to: 900 }); tone({ type: 'sine', from: 1400, to: 700, duration: 0.18, volume: 0.05 }) },
   }
 

@@ -116,7 +116,9 @@ export function advanceNpcs(npcs,dt,player,mode='race') {
       const path=mode==='race'?TRACK:PATHS[n.patrol]
       const arc=mode==='race'?RACE_ARC:PATROL_ARCS[n.patrol]
       const pathLen=arc[arc.length-1]
-      const targetSpeed=n.speed*(1+.05*Math.sin(n.travel*.038+i*1.8))
+      // A rival's TURBO power-up lifts its pace for a couple of seconds.
+      const turbo=Math.max(0,(n.turbo||0)-step)
+      const targetSpeed=n.speed*(1+.05*Math.sin(n.travel*.038+i*1.8))*(turbo>0?1.35:1)
       const advance=stun>0?0:targetSpeed*step
       const travel=n.travel+advance
       const wasLap=Math.floor(n.travel/pathLen),nowLap=Math.floor(travel/pathLen)
@@ -125,7 +127,7 @@ export function advanceNpcs(npcs,dt,player,mode='race') {
       const laneNow=previousLane+Math.max(-LANE_CHANGE_SPEED*step,Math.min(LANE_CHANGE_SPEED*step,lane-previousLane))
       const pose=along(path,arc,travel,laneNow)
       const blastOffsetX=(n.blastOffsetX||0)*Math.exp(-step*4),blastOffsetZ=(n.blastOffsetZ||0)*Math.exp(-step*4)
-      return {...n,...pose,x:pose.x+blastOffsetX,z:pose.z+blastOffsetZ,blastOffsetX,blastOffsetZ,travel,lane,laneNow,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
+      return {...n,...pose,x:pose.x+blastOffsetX,z:pose.z+blastOffsetZ,blastOffsetX,blastOffsetZ,travel,lane,laneNow,turbo,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
     }
     // Wildlife returns to home territory, but flees from nearby fast cars.
     const age=n.travel+step

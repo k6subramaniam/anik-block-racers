@@ -27,6 +27,19 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 - Audio starts after the first tap or key press, as browsers require, and pauses when the app is hidden. Turbo and checkpoint calls are rate limited, so the announcer stays out of the way. To mute it, go to **Settings → ANNOUNCER VOICE**.
 - Logic is in `src/game/announcer.js`; tests are in `src/tests/announcer.test.js`.
 
+### Power-ups (Battle Race)
+
+Three rows of rainbow **?** boxes span all four lanes. Drive through one to hold a random power-up, then press **F** or tap the item button to use it:
+
+| Power-up | Effect |
+|---|---|
+| TURBO | 2.4 s speed boost |
+| SHIELD | 6 s of protection from blasts and oil |
+| ROCKET | Homes in on the nearest rival ahead (6–70 m) and explodes on contact |
+| OIL SLICK | Dropped behind you; anyone who drives over it spins out |
+
+Rivals collect boxes too. They use turbo and shield straight away, fire rockets when you're ahead of them, and drop oil when you're close behind. Boxes regrow 6 s after they're taken. Power-ups sit alongside the existing bombs (**B**), mines (**Q**), barrels, and ammo and repair pads. They're off when Battle Race is switched off for a classic race. Rules are in `src/battle/items.js`.
+
 ### In-game radio
 
 Six stations. Press **N** or tap the radio icon to cycle through them, or pick one under **Settings → MUSIC**. A short card shows what's playing, and your choice is remembered.

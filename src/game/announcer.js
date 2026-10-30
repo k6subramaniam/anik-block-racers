@@ -2,6 +2,7 @@
 // Clips live in public/audio and are decoded once into Web Audio buffers so that
 // playback is instant and never blocks the render loop.
 import { LAPS_TO_WIN } from './track.js'
+import { getAudioContext } from './sound.js'
 
 export const ANNOUNCER_CLIPS = {
   three: 'three.mp3',
@@ -63,10 +64,9 @@ export function createAnnouncer(baseUrl = '/') {
   return {
     // Browsers only allow audio after a user gesture, so call this from one.
     unlock() {
-      const AudioCtor = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)
-      if (!AudioCtor) return
       if (!ctx) {
-        ctx = new AudioCtor()
+        ctx = getAudioContext()
+        if (!ctx) return
         gain = ctx.createGain()
         gain.gain.value = 0.9
         gain.connect(ctx.destination)

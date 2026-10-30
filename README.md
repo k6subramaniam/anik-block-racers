@@ -27,6 +27,13 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 - Audio starts after the first tap or key press, as browsers require, and pauses when the app is hidden. Turbo and checkpoint calls are rate limited, so the announcer stays out of the way. To mute it, go to **Settings → ANNOUNCER VOICE**.
 - Logic is in `src/game/announcer.js`; tests are in `src/tests/announcer.test.js`.
 
+### Engine, sound effects and music
+
+- **Engine:** a synthesized kart engine whose pitch, brightness and volume follow speed, with extra whine during turbo.
+- **Sound effects:** coins, turbo, wall and obstacle bumps, bot hits and smashes, checkpoint chimes, lap and finish fanfares, discovery and relic sparkles, water splashes and countdown beeps.
+- **Music:** a looping chiptune soundtrack at 132 BPM, played quietly on menus and pause and at full volume while racing.
+- Everything is generated live with Web Audio (`src/game/sound.js`), so nothing extra is downloaded, and it shares one AudioContext with the announcer. Each layer can be turned off in Settings: **ENGINE & EFFECTS**, **MUSIC** and **ANNOUNCER VOICE**.
+
 ## Controls
 
 **Samsung:** Landscape recommended. Press and hold the on-screen gas/brake, steering, and drift controls. Tap the **map icon** to choose a district and fast-travel; tap the **compass/flag icon** to switch between free roam and racing.

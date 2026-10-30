@@ -72,11 +72,11 @@ export function trackPoint(index, offset = 0, path = TRACK) {
 export const CHECKPOINT_1_INDEX = 46
 export const CHECKPOINT_2_INDEX = 99
 export const FINISH_INDEX = 130
-export const START_INDEX = 126
+export const START_INDEX = 122
 export const CHECKPOINT_1 = gateAt(CHECKPOINT_1_INDEX)
 export const CHECKPOINT_2 = gateAt(CHECKPOINT_2_INDEX)
 export const FINISH_GATE = gateAt(FINISH_INDEX)
-// The player starts in the right-hand lane, about ten metres behind the line.
+// The player starts in the back row of the grid, right-hand lane, about 17 m behind the line.
 export const START_POSE = Object.freeze(trackPoint(START_INDEX, LANE_OFFSETS[LANES - 1]))
 
 // Pickups cycle across the lanes so changing lanes is part of the racing line.

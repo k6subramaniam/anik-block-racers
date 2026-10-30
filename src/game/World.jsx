@@ -130,7 +130,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
       rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
       rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
     }
-    setHud({ ...fresh, countdown: 3, coins: 0, botsDefeated:0, smashScore:0, rivalKnockouts:0, wildlifeKnockouts:0, rivalsActive:3, wildlifeActive:mode==='explore'?8:0 })
+    setHud({ ...fresh, countdown: 3, coins: 0, botsDefeated:0, smashScore:0, rivalKnockouts:0, wildlifeKnockouts:0, rivalsActive:npcRef.current.filter(n=>n.kind==='racer').length, wildlifeActive:mode==='explore'?8:0 })
   }, [resetToken, mode, setHud])
 
   useEffect(()=>{

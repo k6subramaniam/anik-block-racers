@@ -5,7 +5,7 @@
 ## Game modes
 
 - **Explore Open World:** roam a bounded ~312 × 264 metre terrain at your own pace, across five zones: Neon City, Crystal Ridge, Sunset Canyon, Ember Peaks, and Portal Grove. Discover each location, collect five floating relics, fast-travel from the map, and drive through the grove portal to return to Voxel Valley. Landmarks have simplified collision volumes, an exterior world border, and a lava rescue area.
-- **Race 3 Laps:** Voxel Valley Grand Circuit time trial against three AI rivals. The 325 m lap is a four-lane, 14.4 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
+- **Race 3 Laps:** Voxel Valley Grand Circuit race against seven AI rivals on an eight-kart grid (two rows of four; you start at the back on the right). Rivals overtake by switching to a free lane. The 325 m lap is a four-lane, 14.4 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
 
 ## Cool new Higgsfield 3D assets
 
@@ -26,6 +26,21 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 - **Arcade announcer:** a voice line plays at each countdown beat (THREE · TWO · ONE · GO), at checkpoints, on lap complete, on the **final lap**, at the finish, on turbo boosts, on bot smashes, on new districts and on relics. Clips were generated with Higgsfield Seed Audio TTS and are in `public/audio/` (~350 KB total, precached for offline play).
 - Audio starts after the first tap or key press, as browsers require, and pauses when the app is hidden. Turbo and checkpoint calls are rate limited, so the announcer stays out of the way. To mute it, go to **Settings → ANNOUNCER VOICE**.
 - Logic is in `src/game/announcer.js`; tests are in `src/tests/announcer.test.js`.
+
+### In-game radio
+
+Six stations. Press **N** or tap the radio icon to cycle through them, or pick one under **Settings → MUSIC**. A short card shows what's playing, and your choice is remembered.
+
+| Station | Genre | Source |
+|---|---|---|
+| TURBO FM | Electro racing, 120 BPM | Higgsfield (Seedance 2.0 Mini audio) |
+| NEON NIGHTS | Synthwave, 100 BPM | Higgsfield |
+| RIFF RADIO | Rock, 150 BPM | Higgsfield |
+| CHILL CRUISE | Lo-fi beats, 85 BPM | Higgsfield |
+| BASS DRIVE | Drum & bass, 172 BPM | Higgsfield |
+| 8-BIT ARCADE | Chiptune, 132 BPM | Synthesized live (no download) |
+
+Each Higgsfield track plays its intro once, then loops whole bars seamlessly (`public/audio/radio-*.mp3`, about 200 KB each). The next station is preloaded so switching is instant.
 
 ### Engine, sound effects and music
 

@@ -57,13 +57,27 @@ export const MUSIC_BARS = [
 ]
 export const midiToHz = note => 440 * 2 ** ((note - 69) / 12)
 
-export const MUSIC_FILE = 'music.mp3'
-// The track opens with a ~4 s intro, then a 4-bar groove at 120 BPM that loops forever.
-export const MUSIC_LOOP = { start: 4.39, end: 12.39 }
+// In-game radio. File stations are Higgsfield-generated loops (Seedance 2.0 Mini native
+// audio): each plays its intro once, then loops whole bars between `loop.start` and `loop.end`.
+export const RADIO_STATIONS = Object.freeze([
+  { id: 'turbo', name: 'TURBO FM', genre: 'Electro racing', bpm: 120, file: 'music.mp3', loop: { start: 4.39, end: 12.39 } },
+  { id: 'neon', name: 'NEON NIGHTS', genre: 'Synthwave', bpm: 100, file: 'radio-synthwave.mp3', loop: { start: 1.47, end: 11.07 } },
+  { id: 'riff', name: 'RIFF RADIO', genre: 'Rock', bpm: 150.5, file: 'radio-rock.mp3', loop: { start: 6.917, end: 13.296 } },
+  { id: 'chill', name: 'CHILL CRUISE', genre: 'Lo-fi beats', bpm: 85, file: 'radio-lofi.mp3', loop: { start: 5.717, end: 11.364 } },
+  { id: 'bass', name: 'BASS DRIVE', genre: 'Drum & bass', bpm: 172.25, file: 'radio-dnb.mp3', loop: { start: 7.923, end: 13.497 } },
+  { id: 'arcade', name: '8-BIT ARCADE', genre: 'Chiptune', bpm: MUSIC_BPM, synth: true },
+])
+export const DEFAULT_STATION = RADIO_STATIONS[0].id
+export const stationById = id => RADIO_STATIONS.find(station => station.id === id) || RADIO_STATIONS[0]
+export function nextStation(id, direction = 1) {
+  const n = RADIO_STATIONS.length, i = Math.max(0, RADIO_STATIONS.findIndex(station => station.id === id))
+  return RADIO_STATIONS[(i + direction + n) % n].id
+}
 
 export function createSoundEngine(baseUrl = '/') {
   let ctx = null, master = null, sfxBus = null, musicBus = null, noiseBuffer = null
-  let musicBuffer = null, musicSource = null, musicLoading = null, musicIntense = false, musicFailed = false
+  let stationId = DEFAULT_STATION, musicSource = null, musicIntense = false
+  const buffers = new Map(), loading = new Map(), failed = new Set()
   let engine = null, sfxOn = true, musicOn = true, musicActive = false, musicTimer = null
   let nextStepTime = 0, step = 0
 
@@ -115,6 +129,7 @@ export function createSoundEngine(baseUrl = '/') {
     splash: () => { burst({ duration: 0.7, volume: 0.35, filter: 'bandpass', from: 2400, to: 300 }); tone({ type: 'sine', from: 320, to: 90, duration: 0.3, volume: 0.15 }) },
     countLow: () => tone({ from: 440, duration: 0.18, volume: 0.14 }),
     countHigh: () => tone({ from: 880, duration: 0.4, volume: 0.16 }),
+    tune: () => { burst({ duration: 0.28, volume: 0.16, filter: 'bandpass', from: 4200, to: 900 }); tone({ type: 'sine', from: 1400, to: 700, duration: 0.18, volume: 0.05 }) },
   }
 
   function startEngine() {
@@ -145,47 +160,50 @@ export function createSoundEngine(baseUrl = '/') {
 
   function applyMusicGain() {
     // A full mixed track needs more gain than the sparse synthesized voices.
-    if (musicBus) musicBus.gain.setTargetAtTime((musicIntense ? 1 : 0.5) * (musicBuffer ? 0.5 : 0.32), ctx.currentTime, 0.3)
+    if (musicBus) musicBus.gain.setTargetAtTime((musicIntense ? 1 : 0.5) * (buffers.has(stationId) ? 0.5 : 0.32), ctx.currentTime, 0.3)
   }
 
-  function loadMusic() {
-    if (musicLoading) return
-    musicLoading = fetch(`${baseUrl}audio/${MUSIC_FILE}`)
-      .then(response => response.ok ? response.arrayBuffer() : Promise.reject(new Error('missing music')))
+  function loadStation(station) {
+    if (station.synth || buffers.has(station.id) || loading.has(station.id)) return
+    loading.set(station.id, fetch(`${baseUrl}audio/${station.file}`)
+      .then(response => response.ok ? response.arrayBuffer() : Promise.reject(new Error('missing station')))
       .then(data => ctx.decodeAudioData(data))
-      .then(buffer => {
-        musicBuffer = buffer
+      .then(buffer => buffers.set(station.id, buffer))
+      .catch(() => failed.add(station.id))
+      .then(() => {
+        if (station.id !== stationId) return
         applyMusicGain()
         updateMusic()
-      })
-      .catch(() => { musicFailed = true; applyMusicGain(); updateMusic() })
+        // Warm up the next station so the radio button switches instantly.
+        loadStation(stationById(nextStation(station.id)))
+      }))
+  }
+
+  function stopMusic() {
+    if (musicSource) { try { musicSource.stop() } catch {} musicSource = null }
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null }
   }
 
   function updateMusic() {
-    const shouldPlay = ctx && musicOn && musicActive
-    if (musicBuffer) {
-      if (shouldPlay && !musicSource) {
-        musicSource = ctx.createBufferSource()
-        musicSource.buffer = musicBuffer
-        musicSource.loop = true
-        musicSource.loopStart = MUSIC_LOOP.start
-        musicSource.loopEnd = MUSIC_LOOP.end
-        musicSource.connect(musicBus)
-        musicSource.start()
-      } else if (!shouldPlay && musicSource) {
-        try { musicSource.stop() } catch {}
-        musicSource = null
-      }
+    if (!ctx || !musicOn || !musicActive) { stopMusic(); return }
+    const station = stationById(stationId), buffer = buffers.get(station.id)
+    if (buffer) {
+      if (musicSource) return
+      musicSource = ctx.createBufferSource()
+      musicSource.buffer = buffer
+      musicSource.loop = true
+      musicSource.loopStart = station.loop.start
+      musicSource.loopEnd = station.loop.end
+      musicSource.connect(musicBus)
+      musicSource.start()
       return
     }
-    // Until the track loads, stay quiet; fall back to the synthesized chiptune only if it fails.
-    if (!musicFailed) return
-    if (shouldPlay && !musicTimer) {
+    // A station that is still loading stays quiet; the chiptune plays for its own
+    // station and stands in for any file that failed to load.
+    if (!station.synth && !failed.has(station.id)) { loadStation(station); return }
+    if (!musicTimer) {
       nextStepTime = ctx.currentTime + 0.05
       musicTimer = setInterval(scheduleMusic, 25)
-    } else if (!shouldPlay && musicTimer) {
-      clearInterval(musicTimer)
-      musicTimer = null
     }
   }
 
@@ -198,7 +216,6 @@ export function createSoundEngine(baseUrl = '/') {
         sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? 1 : 0; sfxBus.connect(master)
         musicBus = ctx.createGain(); musicBus.gain.value = 0.16; musicBus.connect(master)
         startEngine()
-        loadMusic()
       }
       if (ctx.state === 'suspended') ctx.resume().catch(() => {})
       updateMusic()
@@ -221,6 +238,16 @@ export function createSoundEngine(baseUrl = '/') {
       if (sfxBus) sfxBus.gain.setTargetAtTime(value ? 1 : 0, ctx.currentTime, 0.03)
     },
     setMusicEnabled(value) { musicOn = value; updateMusic() },
+    setStation(id) {
+      const station = stationById(id)
+      if (station.id === stationId) return
+      stationId = station.id
+      stopMusic()
+      if (!ctx) return
+      if (musicOn && musicActive) SFX.tune()
+      applyMusicGain()
+      updateMusic()
+    },
     // Racing gets the full soundtrack; menus and pause get a quieter bed.
     setMusicState(active, intense) {
       musicActive = active

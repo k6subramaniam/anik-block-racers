@@ -29,7 +29,7 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 
 ### Power-ups (Battle Race)
 
-Three rows of rainbow **?** boxes span all four lanes. Drive through one to hold a random power-up, then press **F** or tap the item button to use it:
+Four rows of rainbow **?** boxes span all four lanes. The first row is 11 m past the start line, so you can grab a power-up within seconds of "GO". Drive through one to hold a random power-up, then press **F** or tap the item button to use it:
 
 | Power-up | Effect |
 |---|---|
@@ -38,7 +38,7 @@ Three rows of rainbow **?** boxes span all four lanes. Drive through one to hold
 | ROCKET | Homes in on the nearest rival ahead (6–70 m) and explodes on contact |
 | OIL SLICK | Dropped behind you; anyone who drives over it spins out |
 
-Rivals collect boxes too. They use turbo and shield straight away, fire rockets when you're ahead of them, and drop oil when you're close behind. Boxes regrow 6 s after they're taken. Power-ups sit alongside the existing bombs (**B**), mines (**Q**), barrels, and ammo and repair pads. They're off when Battle Race is switched off for a classic race. Rules are in `src/battle/items.js`.
+Rivals collect boxes too. They use turbo and shield straight away, fire rockets when you're ahead of them, and drop oil when you're close behind. Boxes regrow 6 s after you take one. A rival's pickup doesn't remove a box for you. Power-ups sit alongside the existing bombs (**B**), mines (**Q**), barrels, and ammo and repair pads. They're off when Battle Race is switched off for a classic race. Rules are in `src/battle/items.js`.
 
 ### In-game radio
 

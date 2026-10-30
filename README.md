@@ -5,7 +5,7 @@
 ## Game modes
 
 - **Explore Open World:** roam a bounded ~312 × 264 metre terrain at your own pace, across five zones: Neon City, Crystal Ridge, Sunset Canyon, Ember Peaks, and Portal Grove. Discover each location, collect five floating relics, fast-travel from the map, and drive through the grove portal to return to Voxel Valley. Landmarks have simplified collision volumes, an exterior world border, and a lava rescue area.
-- **Race 3 Laps:** Voxel Valley Grand Circuit race against seven AI rivals on an eight-kart grid (two rows of four; you start at the back on the right). Rivals overtake by switching to a free lane. The 325 m lap is a four-lane, 14.4 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
+- **Race 3 Laps:** Voxel Valley Grand Circuit race against seven AI rivals on an eight-kart grid (two rows of four; you start at the back on the right). Rivals overtake by switching to a free lane. The 321 m lap is a six-lane, 21.6 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
 
 ## Cool new Higgsfield 3D assets
 
@@ -29,7 +29,7 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 
 ### Power-ups (Battle Race)
 
-Four rows of rainbow **?** boxes span all four lanes. The first row is 11 m past the start line, so you can grab a power-up within seconds of "GO". Drive through one to hold a random power-up, then press **F** or tap the item button to use it:
+Four rows of rainbow **?** boxes span all six lanes. The first row is 11 m past the start line, so you can grab a power-up within seconds of "GO". Drive through one to hold a random power-up, then press **F** or tap the item button to use it:
 
 | Power-up | Effect |
 |---|---|
@@ -40,7 +40,7 @@ Four rows of rainbow **?** boxes span all four lanes. The first row is 11 m past
 
 Rivals collect boxes too. They use turbo and shield straight away, fire rockets when you're ahead of them, and drop oil when you're close behind. Boxes regrow 6 s after you take one. A rival's pickup doesn't remove a box for you. Power-ups sit alongside the existing bombs (**B**), mines (**Q**), barrels, and ammo and repair pads. They're off when Battle Race is switched off for a classic race. Rules are in `src/battle/items.js`.
 
-The five **Battle Race circuits** (Blast, Canyon, Frost, Skybridge, Summit) have the same power-ups: four rows of **?** boxes per lap, the first 40 m after the start, plus an item button between BOMB and MINE (**F** on a keyboard). Rules are in `src/battle/circuitItems.js`. In portrait on a phone, these circuits use a pulled-back camera, a slimmer HUD and larger touch buttons.
+The five **Battle Race circuits** (Blast, Canyon, Frost, Skybridge, Summit), and tracks made in the Track Creator, race 50% wider than their authored width (18–21 m for the built-in circuits). They have the same power-ups: four rows of **?** boxes per lap, the first 40 m after the start, plus an item button between BOMB and MINE (**F** on a keyboard). Rules are in `src/battle/circuitItems.js`. In portrait on a phone, these circuits use a pulled-back camera, a slimmer HUD and larger touch buttons.
 
 ### In-game radio
 

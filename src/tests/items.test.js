@@ -12,10 +12,10 @@ const at=(index,lane=0,extra={})=>({...initialRaceState(),...trackPoint(index,la
 const tick=(s,p,bots=[],actions={},options={})=>stepBattle(s,p,bots,.05,actions,{ai:false,...options})
 const rival=(id,index,lane,extra={})=>({...makeNpcs('race').find(n=>n.id===id),...trackPoint(index,lane),stun:0,respawn:0,blastShield:0,...extra})
 
-test('four rows of item boxes span all four lanes on the road',()=>{
- assert.equal(ITEM_BOXES.length,16)
+test('four rows of item boxes span all six lanes on the road',()=>{
+ assert.equal(ITEM_BOXES.length,ITEM_BOX_ROWS.length*LANE_OFFSETS.length)
  for(const box of ITEM_BOXES)assert.ok(nearestRoad(box).distance<ROAD_WIDTH/2-1)
- assert.equal(new Set(ITEM_BOXES.map(b=>Math.round(nearestRoad(b).distance*10))).size,2,'boxes sit on the 1.8 m and 5.4 m lane lines')
+ assert.equal(new Set(ITEM_BOXES.map(b=>Math.round(nearestRoad(b).distance*10))).size,3,'boxes sit on the 1.8, 5.4 and 9 m lane lines')
 })
 test('item rolls are deterministic and every power-up can appear',()=>{
  assert.equal(rollItem(42),rollItem(42))
@@ -82,7 +82,7 @@ test('the first row of boxes is just past the start line, within reach of the gr
  const start=ITEM_BOX_ROWS.find(i=>past(i)>0&&past(i)<25)
  assert.ok(start,'a box row sits within 25 m after the finish line')
  const row=ITEM_BOXES.filter(b=>b.id.startsWith(`item-${start}-`))
- assert.equal(row.length,4)
+ assert.equal(row.length,LANE_OFFSETS.length)
  for(const b of row)assert.ok(Math.hypot(b.x-SPAWN.x,b.z-SPAWN.z)<45,'reachable within seconds of the start')
 })
 test('a rival taking a box leaves it for the player',()=>{

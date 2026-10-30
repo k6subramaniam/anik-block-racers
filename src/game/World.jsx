@@ -27,7 +27,7 @@ const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN
 const walls = trackBarriers()
 const boostLocations = BOOST_PADS
 const coinLocations = COINS
-// The Higgsfield scene's original two-lane road kit; RaceCircuit draws the four-lane circuit instead.
+// The Higgsfield scene's original two-lane road kit; RaceCircuit draws the six-lane circuit instead.
 const OLD_RACE_KIT = ['TRACK_','PREFAB_coin_','PREFAB_boost_pad_','PREFAB_checkpoint_gate_','PROP_start_','PROP_ANIK_','TRIGGER_']
 
 function makeGameAssets(scene) {

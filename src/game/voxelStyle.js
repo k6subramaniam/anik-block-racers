@@ -107,7 +107,7 @@ function distanceToSegment(x, z, a, b) {
 }
 export function isSafeVoxelSceneryPosition(x, z) {
   if (Math.abs(x) > 143 || Math.abs(z) > 118) return false
-  // Keep canopies well clear of the four-lane road edge.
+  // Keep canopies well clear of the six-lane road edge.
   if (nearestRoad({ x, z }).distance < ROAD_WIDTH / 2 + 5) return false
   if (WATER_BODIES.some(b => ((x - b.x) / (b.rx + 4)) ** 2 + ((z - b.z) / (b.rz + 4)) ** 2 < 1)) return false
   if (ZONES.some(t => Math.hypot(t.x - x, t.z - z) < t.radius * .78)) return false
@@ -121,11 +121,11 @@ export function isSafeVoxelSceneryPosition(x, z) {
 export function generateVoxelScenery(count = 135, seed = 7391) {
   const r = rngFor(seed), trees = []
   for (let i = 0; i < 4000 && trees.length < count; i++) {
-    const x = (r() - .5) * 284, z = (r() - .5) * 232
+    // Check the rounded position that is actually stored, not the raw sample.
+    const x = Math.round((r() - .5) * 2840) / 10, z = Math.round((r() - .5) * 2320) / 10
     if (!isSafeVoxelSceneryPosition(x, z)) continue
     if (trees.some(p => (p.x-x)**2 + (p.z-z)**2 < 33)) continue
-    trees.push({ id: `voxel-oak-${trees.length}`, x: Math.round(x * 10) / 10,
-      z: Math.round(z * 10) / 10, height: 3.3 + r() * 2.5,
+    trees.push({ id: `voxel-oak-${trees.length}`, x, z, height: 3.3 + r() * 2.5,
       canopy: 3.2 + r() * 1.9, shade: r() > .48 ? 0 : 1, radius: .85 })
   }
   return trees

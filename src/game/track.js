@@ -3,16 +3,18 @@
 // the south. Points use Blender X/Y and map to glTF X/-Z, like the original
 // Higgsfield road it replaces. Game rules use metres and run in Node without Three.js.
 export const CONTROL_POINTS = [
-  [-22, -20], [-25, 0], [-21, 21], [-5, 39], [20, 43],
+  [-19, -20], [-22, 0], [-18, 21], [-5, 39], [20, 43],
   [44, 35], [64, 28], [78, 10], [78, -14], [68, -36],
   [46, -55], [16, -57], [-6, -42],
 ]
 export const SAMPLES_PER_SEGMENT = 12
-export const LANES = 4
+export const LANES = 6
 export const LANE_WIDTH = 3.6
 export const ROAD_WIDTH = LANES * LANE_WIDTH
 // Lane centres measured from the centre line; negative is the driver's left.
 export const LANE_OFFSETS = Object.freeze(Array.from({ length: LANES }, (_, i) => (i - (LANES - 1) / 2) * LANE_WIDTH))
+// The eight-kart grid lines up two rows of four across the middle lanes.
+export const GRID_LANES = Object.freeze(LANE_OFFSETS.slice(1, 5))
 export const LAPS_TO_WIN = 3
 
 function catmull(a, b, c, d, t) {
@@ -77,10 +79,10 @@ export const CHECKPOINT_1 = gateAt(CHECKPOINT_1_INDEX)
 export const CHECKPOINT_2 = gateAt(CHECKPOINT_2_INDEX)
 export const FINISH_GATE = gateAt(FINISH_INDEX)
 // The player starts in the back row of the grid, right-hand lane, about 17 m behind the line.
-export const START_POSE = Object.freeze(trackPoint(START_INDEX, LANE_OFFSETS[LANES - 1]))
+export const START_POSE = Object.freeze(trackPoint(START_INDEX, GRID_LANES[3]))
 
 // Pickups cycle across the lanes so changing lanes is part of the racing line.
-export const BOOST_PADS = Object.freeze([28,70,105,143].map((index, i) => ({ index, ...trackPoint(index, LANE_OFFSETS[[1,2,0,3][i]]) })))
+export const BOOST_PADS = Object.freeze([28,70,105,143].map((index, i) => ({ index, ...trackPoint(index, LANE_OFFSETS[[1,4,0,5][i]]) })))
 export const COINS = Object.freeze([12,21,34,42,57,64,81,93,116,123,133,151].map((index, i) => ({ index, ...trackPoint(index, LANE_OFFSETS[i % LANES]) })))
 
 export function crossedGate(previous, current, gate) {

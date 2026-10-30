@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Camera, Check, CircleHelp, Clock3, Coins, Flag, Gauge, Pause, Play, RotateCcw, Shield, Trophy, X, Settings2, Smartphone, Maximize2, Download, Vibrate, GaugeCircle, Map as MapIcon, Compass, Navigation, Bot, MessageCircle, CloudRain, CloudSnow, Wind, Sun as SunIcon, Moon, Waves } from 'lucide-react'
+import { Activity, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Camera, Check, CircleHelp, Clock3, Coins, Flag, Gauge, Pause, Play, RotateCcw, Shield, Trophy, X, Settings2, Smartphone, Maximize2, Download, Vibrate, GaugeCircle, Map as MapIcon, Compass, Navigation, Bot, MessageCircle, CloudRain, CloudSnow, Wind, Sun as SunIcon, Moon, Waves, Volume2, VolumeX } from 'lucide-react'
 import RacingScene from './game/World.jsx'
 import {BattleProvider,BattleHud,BattleChoice} from './battle/BattleUI.jsx'
 import { formatTime, INPUT_DEFAULT } from './game/simulation.js'
@@ -7,6 +7,7 @@ import { LAPS_TO_WIN } from './game/track.js'
 import { ZONES, RELICS, mapPosition } from './game/openWorld.js'
 import { WATER_DESTINATIONS, WATER_BODIES } from './game/water.js'
 import {FRONTIER_ROADS,WORLD_SIZE} from './game/frontier.js'
+import { createAnnouncer, announcerClipFor, COUNTDOWN_CLIPS } from './game/announcer.js'
 import { createHeldInput, getRenderBudget, isCoarsePointer, safeStoredQuality, QUALITY_OPTIONS } from './game/mobile.js'
 
 const phrases={
@@ -84,7 +85,7 @@ function Speedometer({speed,boost}){
   </div>
 }
 function IntroCard({loaded,onStart,onExplore,mobile,onInstall,canInstall}){
-  return <div className="dialog-backdrop"><div className="intro-panel">
+  return <div className="dialog-backdrop intro-backdrop"><div className="intro-panel">
     <div className="card-eyebrow"><span className="green-dot"/> ANIK VOXEL WORLD · BIGGER WORLD v3.1</div>
     <div className="intro-heading"><span>RACE THE</span><strong>BLOCKS.</strong></div>
     <p className="intro-copy">Race through pixel-textured landscapes or explore ten districts across a 906 × 756 metre world with cubic forests, walking villagers, lakes, creatures, and hidden relics!</p>
@@ -139,6 +140,8 @@ function WorldApp(){
   const [quality,setQuality]=useState(()=>{try{return safeStoredQuality(localStorage.getItem('anik-quality'))}catch{return 'auto'}})
   const [haptics,setHaptics]=useState(()=>{try{return localStorage.getItem('anik-haptics')!=='off'}catch{return true}})
   const hapticsRef=useRef(haptics);hapticsRef.current=haptics
+  const [voice,setVoice]=useState(()=>{try{return localStorage.getItem('anik-voice')!=='off'}catch{return true}})
+  const announcer=useRef(null);if(!announcer.current)announcer.current=createAnnouncer(import.meta.env.BASE_URL)
   const budget=getRenderBudget(quality,{coarse:mobile,memory:typeof navigator==='undefined'?undefined:navigator.deviceMemory,cores:typeof navigator==='undefined'?undefined:navigator.hardwareConcurrency})
   const [hud,setHud]=useState({lap:1,checkpoint:0,speed:0,elapsed:0,bestLap:null,coins:0,collisions:0,countdown:3,visited:[],collected:[],zoneName:'VOXEL VALLEY',botsDefeated:0,smashScore:0,rivalsActive:3,wildlifeActive:8,worldTime:'08:00',weather:'CLEAR',daylight:1,windSpeed:0,submersion:0,inWater:false})
   const [toast,setToast]=useState(null),toastTime=useRef(null)
@@ -177,6 +180,7 @@ function WorldApp(){
     if(installPrompt){try{await installPrompt.prompt();await installPrompt.userChoice}catch{};setInstallPrompt(null)}else setShowInstallHelp(true)
   }
   const onWorldEvent=useCallback((event,race)=>{
+    const clip=announcerClipFor(event,race);if(clip)announcer.current.play(clip)
     if(event==='finished')return
     if(hapticsRef.current&&navigator.vibrate){
       try{
@@ -197,6 +201,13 @@ function WorldApp(){
   useEffect(()=>{if(!loaded||phase!=='ready')return;if(new URLSearchParams(window.location.search).get('source')==='shortcut-explore')startExplore()},[loaded,phase,startExplore])
   useEffect(()=>{try{localStorage.setItem('anik-quality',quality)}catch{}},[quality])
   useEffect(()=>{try{localStorage.setItem('anik-haptics',haptics?'on':'off')}catch{}},[haptics])
+  useEffect(()=>{announcer.current.setEnabled(voice);try{localStorage.setItem('anik-voice',voice?'on':'off')}catch{}},[voice])
+  useEffect(()=>{
+    // Audio may only start after a user gesture; the first tap or key press unlocks it.
+    const unlock=()=>announcer.current.unlock(),hidden=()=>document.hidden?announcer.current.suspend():announcer.current.resume()
+    window.addEventListener('pointerdown',unlock);window.addEventListener('keydown',unlock);document.addEventListener('visibilitychange',hidden)
+    return()=>{window.removeEventListener('pointerdown',unlock);window.removeEventListener('keydown',unlock);document.removeEventListener('visibilitychange',hidden)}
+  },[])
   useEffect(()=>{
     const handler=e=>{e.preventDefault();setInstallPrompt(e)},installed=()=>{setStandalone(true);setInstallPrompt(null)}
     setStandalone(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true)
@@ -217,8 +228,9 @@ function WorldApp(){
   },[phase])
   useEffect(()=>{
     if(phase!=='countdown')return
-    setCountdownValue(3)
-    const timers=[window.setTimeout(()=>setCountdownValue(2),1000),window.setTimeout(()=>setCountdownValue(1),2000),window.setTimeout(()=>setCountdownValue(0),3000),window.setTimeout(()=>setPhase('racing'),3400)]
+    const tick=value=>{setCountdownValue(value);announcer.current.play(COUNTDOWN_CLIPS[value])}
+    tick(3)
+    const timers=[window.setTimeout(()=>tick(2),1000),window.setTimeout(()=>tick(1),2000),window.setTimeout(()=>tick(0),3000),window.setTimeout(()=>setPhase('racing'),3400)]
     return()=>timers.forEach(window.clearTimeout)
   },[phase,resetToken])
   const isRacing=phase==='racing'||phase==='exploring',exploring=mode==='explore'
@@ -249,7 +261,7 @@ function WorldApp(){
     {phase==='ready'&&<IntroCard loaded={loaded} onStart={start} onExplore={startExplore} mobile={mobile} onInstall={installGame} canInstall={!!installPrompt&&!standalone}/>}
     {(phase==='finished'||phase==='paused')&&<CenterDialog type={phase} mode={mode} elapsed={hud.elapsed} bestLap={hud.bestLap} coins={hud.coins} onContinue={togglePause} onRestart={restart} onExplore={startExplore}/>}
     {showMap&&<WorldMapPanel hud={hud} onClose={()=>setShowMap(false)} onTravel={travelTo}/>}
-    {showSettings&&<div className="help-backdrop settings-backdrop" onClick={()=>setShowSettings(false)}><div className="help-panel settings-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>GALAXY SETTINGS</h2><button onClick={()=>setShowSettings(false)} aria-label="Close settings"><X/></button></div><p>Choose the best 3D performance for your phone. Original 16-pixel textures and chunked voxel scenery are enabled in every preset.</p><div className="mobile-setting-caption"><GaugeCircle size={18}/> GRAPHICS QUALITY</div><div className="quality-options" role="group" aria-label="Graphics quality">{QUALITY_OPTIONS.map(q=><button key={q} data-testid={`quality-${q}`} className={quality===q?'selected':''} aria-pressed={quality===q} onClick={()=>setQuality(q)}>{q.toUpperCase()}</button>)}</div><p className="quality-explain">Current renderer: {budget.label}. Render scale: {budget.dpr.toFixed(2)}×. {quality==='auto'?'Automatically chosen using available device hints.':''}</p><BattleChoice/><div className="weather-preview-actions"><button data-testid="next-weather" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'weather'}))}><CloudRain size={15}/> NEXT WEATHER</button><button data-testid="preview-night" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'night'}))}><Moon size={15}/> PREVIEW NIGHT</button></div><button className="settings-row-button" aria-pressed={haptics} onClick={()=>setHaptics(x=>!x)}><Vibrate size={20}/> VIBRATION FEEDBACK <strong>{haptics?'ON':'OFF'}</strong></button><button className="settings-row-button" onClick={enterFullscreen}><Maximize2 size={20}/> FULLSCREEN / LANDSCAPE <span>OPEN</span></button><button className="settings-row-button" onClick={installGame}><Download size={20}/> INSTALL TO HOME SCREEN <span>{standalone?'INSTALLED':installPrompt?'INSTALL':'HELP'}</span></button><button className="primary-button" onClick={()=>setShowSettings(false)}>BACK TO RACE <Check size={16}/></button></div></div>}
+    {showSettings&&<div className="help-backdrop settings-backdrop" onClick={()=>setShowSettings(false)}><div className="help-panel settings-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>GALAXY SETTINGS</h2><button onClick={()=>setShowSettings(false)} aria-label="Close settings"><X/></button></div><p>Choose the best 3D performance for your phone. Original 16-pixel textures and chunked voxel scenery are enabled in every preset.</p><div className="mobile-setting-caption"><GaugeCircle size={18}/> GRAPHICS QUALITY</div><div className="quality-options" role="group" aria-label="Graphics quality">{QUALITY_OPTIONS.map(q=><button key={q} data-testid={`quality-${q}`} className={quality===q?'selected':''} aria-pressed={quality===q} onClick={()=>setQuality(q)}>{q.toUpperCase()}</button>)}</div><p className="quality-explain">Current renderer: {budget.label}. Render scale: {budget.dpr.toFixed(2)}×. {quality==='auto'?'Automatically chosen using available device hints.':''}</p><BattleChoice/><div className="weather-preview-actions"><button data-testid="next-weather" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'weather'}))}><CloudRain size={15}/> NEXT WEATHER</button><button data-testid="preview-night" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'night'}))}><Moon size={15}/> PREVIEW NIGHT</button></div><button className="settings-row-button" aria-pressed={haptics} onClick={()=>setHaptics(x=>!x)}><Vibrate size={20}/> VIBRATION FEEDBACK <strong>{haptics?'ON':'OFF'}</strong></button><button className="settings-row-button" data-testid="toggle-voice" aria-pressed={voice} onClick={()=>setVoice(x=>!x)}>{voice?<Volume2 size={20}/>:<VolumeX size={20}/>} ANNOUNCER VOICE <strong>{voice?'ON':'OFF'}</strong></button><button className="settings-row-button" onClick={enterFullscreen}><Maximize2 size={20}/> FULLSCREEN / LANDSCAPE <span>OPEN</span></button><button className="settings-row-button" onClick={installGame}><Download size={20}/> INSTALL TO HOME SCREEN <span>{standalone?'INSTALLED':installPrompt?'INSTALL':'HELP'}</span></button><button className="primary-button" onClick={()=>setShowSettings(false)}>BACK TO RACE <Check size={16}/></button></div></div>}
     {showInstallHelp&&<div className="help-backdrop settings-backdrop" onClick={()=>setShowInstallHelp(false)}><div className="help-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>INSTALL ON SAMSUNG</h2><button onClick={()=>setShowInstallHelp(false)} aria-label="Close installation help"><X/></button></div><p>Open the game over HTTPS in <strong>Samsung Internet</strong> or <strong>Chrome</strong>. Tap the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. Launch ANIK Racers from your Apps screen to play full screen.</p><p>Rotate the phone horizontally. The first play loads the 3D models; later launches can reuse cached game assets.</p><button className="primary-button" onClick={()=>setShowInstallHelp(false)}>GOT IT <Check size={16}/></button></div></div>}
     {showHow&&<div className="help-backdrop" onClick={()=>setShowHow(false)}><div className="help-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>HOW TO RACE</h2><button onClick={()=>setShowHow(false)} aria-label="Close help"><X size={21}/></button></div><p>Race three laps on Voxel Valley. Cross checkpoints 1 and 2 in order before the finish line. You cannot skip checkpoints to win.</p><div className="help-table"><div><kbd>W</kbd><kbd>↑</kbd><span>Accelerate</span></div><div><kbd>S</kbd><kbd>↓</kbd><span>Brake / reverse</span></div><div><kbd>A</kbd><kbd>D</kbd><span>Steer</span></div><div><kbd>SPACE</kbd><span>Drift / tighter turning</span></div><div><kbd>C</kbd><span>Chase / overhead camera</span></div><div><kbd>P</kbd><kbd>ESC</kbd><span>Pause / resume</span></div><div><kbd>R</kbd><span>Restart race</span></div></div><p className="help-note">Battle Race adds warning mines, explosive barrels and BOMB / MINE controls to the Voxel Valley circuit. Press B to throw ahead or Q to drop behind. Blast damage reduces kart health; wrecked karts recover with a temporary shield without losing lap progress. Cyan pads refill ammo and green pads repair. Rival karts deploy hazards too. Turn Battle Race off for a classic race. Three AI racers drive around the track and patrol the world. Eight voxel creatures wander or flee from approaching racers. Crash into a bot at speed to reduce its health; a powerful smash knocks it out in an arcade-style burst. Bots reappear after a short cooldown. For open-world mode, press E or tap the compass, open the map with M to fast travel, find all ten relics, and follow the highways into four new frontier districts. Drive through the glowing grove portal to return to Voxel Valley. Blockhaven Village has 12 friendly walking AI characters. Approach at low speed, tap TALK or press T, and read their tips. Villagers step aside for traffic and cannot be damaged. Use the map to travel to three lakes; water causes splash, drag and gradual submersion before automatic shore rescue. Weather cycles through CLEAR → RAIN → SNOW → WINDY with changes to steering grip and wind drift. The clock progresses through day and night. Settings can preview the next weather or nighttime. On Galaxy, use the arrows to steer, GAS to accelerate, BRAKE to slow down, and DRIFT for sharper turns.</p><button className="primary-button" onClick={()=>setShowHow(false)}>GOT IT <Check size={16}/></button></div></div>}
   </div>

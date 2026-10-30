@@ -20,6 +20,13 @@ Higgsfield editable source: https://higgsfield.ai/3d-jutsu/6e4c8faf-89eb-4667-a0
 
 A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest geometry remains editable in the Higgsfield project. The HTML/JS build uses glTF-compatible materials with no official Minecraft artwork.
 
+## v4.2 — Higgsfield title art and race announcer
+
+- **Title key art:** the intro screen now sits on cinematic voxel-kart key art generated with Higgsfield (`public/art/keyart.webp`, 110 KB WebP).
+- **Arcade announcer:** a voice line plays at each countdown beat (THREE · TWO · ONE · GO), at checkpoints, on lap complete, on the **final lap**, at the finish, on turbo boosts, on bot smashes, on new districts and on relics. Clips were generated with Higgsfield Seed Audio TTS and are in `public/audio/` (~350 KB total, precached for offline play).
+- Audio starts after the first tap or key press, as browsers require, and pauses when the app is hidden. Turbo and checkpoint calls are rate limited, so the announcer stays out of the way. To mute it, go to **Settings → ANNOUNCER VOICE**.
+- Logic is in `src/game/announcer.js`; tests are in `src/tests/announcer.test.js`.
+
 ## Controls
 
 **Samsung:** Landscape recommended. Press and hold the on-screen gas/brake, steering, and drift controls. Tap the **map icon** to choose a district and fast-travel; tap the **compass/flag icon** to switch between free roam and racing.

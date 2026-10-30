@@ -340,3 +340,6 @@ button{touch-action:manipulation;cursor:pointer}
 .intro-heading strong{filter:drop-shadow(3px 4px 0 rgba(29,60,23,.55))}
 .speed-numeral{text-shadow:2px 3px 0 rgba(18,43,25,.5)}
 @media(max-width:700px){.card-eyebrow{letter-spacing:.045em}}
+/* Higgsfield-generated title key art behind the intro card; the existing scrims keep text legible. */
+.intro-backdrop{background:radial-gradient(ellipse at 64% 57%,rgba(7,18,23,.10),rgba(8,17,22,.55) 72%),linear-gradient(90deg,rgba(4,12,15,.86) 0%,rgba(4,12,15,.58) 45%,rgba(4,12,15,.05) 100%),url('/art/keyart.webp') center right/cover no-repeat,#071216}
+@media(max-width:650px){.intro-backdrop{background:linear-gradient(rgba(4,11,14,.70),rgba(4,11,14,.82)),url('/art/keyart.webp') 70% center/cover no-repeat,#071216}}

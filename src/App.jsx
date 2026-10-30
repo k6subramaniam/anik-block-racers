@@ -145,7 +145,7 @@ function WorldApp(){
   const announcer=useRef(null);if(!announcer.current)announcer.current=createAnnouncer(import.meta.env.BASE_URL)
   const [sfx,setSfx]=useState(()=>{try{return localStorage.getItem('anik-sfx')!=='off'}catch{return true}})
   const [music,setMusic]=useState(()=>{try{return localStorage.getItem('anik-music')!=='off'}catch{return true}})
-  const sound=useRef(null);if(!sound.current)sound.current=createSoundEngine()
+  const sound=useRef(null);if(!sound.current)sound.current=createSoundEngine(import.meta.env.BASE_URL)
   const budget=getRenderBudget(quality,{coarse:mobile,memory:typeof navigator==='undefined'?undefined:navigator.deviceMemory,cores:typeof navigator==='undefined'?undefined:navigator.hardwareConcurrency})
   const [hud,setHud]=useState({lap:1,checkpoint:0,speed:0,elapsed:0,bestLap:null,coins:0,collisions:0,countdown:3,visited:[],collected:[],zoneName:'VOXEL VALLEY',botsDefeated:0,smashScore:0,rivalsActive:3,wildlifeActive:8,worldTime:'08:00',weather:'CLEAR',daylight:1,windSpeed:0,submersion:0,inWater:false})
   const [toast,setToast]=useState(null),toastTime=useRef(null)

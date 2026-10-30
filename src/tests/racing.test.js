@@ -1,20 +1,44 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TRACK, ROAD_WIDTH, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
+import { TRACK, ROAD_WIDTH, LANES, LANE_WIDTH, LANE_OFFSETS, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, FINISH_INDEX, START_INDEX, BOOST_PADS, COINS, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
 import { initialRaceState, moveKart, advanceKart, SPAWN, MAX_SPEED, SAFE_ROAD_HALF_WIDTH, formatTime, nearestObstacle } from '../game/simulation.js'
 
 function before(g, distance=.55){return {x:g.x-g.tx*distance,z:g.z-g.tz*distance}}
 function after(g, distance=.55){return {x:g.x+g.tx*distance,z:g.z+g.tz*distance}}
 
-test('Higgsfield asset track has 156 continuous closed samples',()=>{
+test('Grand Circuit is a 156-sample closed loop of four 3.6m lanes',()=>{
   assert.equal(TRACK.length,156)
-  assert.equal(ROAD_WIDTH,7.2)
+  assert.equal(LANES,4);assert.equal(LANE_WIDTH,3.6);assert.ok(Math.abs(ROAD_WIDTH-14.4)<1e-9)
+  assert.deepEqual(LANE_OFFSETS.map(x=>+x.toFixed(2)),[-5.4,-1.8,1.8,5.4])
   const distances=TRACK.map((p,i)=>Math.hypot(p.x-TRACK[(i+1)%TRACK.length].x,p.z-TRACK[(i+1)%TRACK.length].z))
   assert.ok(Math.max(...distances)<2.8,'No gap between samples')
+  const lap=distances.reduce((a,b)=>a+b,0)
+  assert.ok(lap>300,`lap is ${lap.toFixed(1)}m, at least 1.7x the original 177m`)
 })
-test('spawn matches original emerald kart and lies on 7.2m road',()=>{
-  assert.deepEqual({x:SPAWN.x,z:SPAWN.z},{x:8,z:18.2})
-  assert.ok(nearestRoad(SPAWN).distance<3.6)
+test('circuit keeps clear of the castle, village and lagoon and never overlaps itself',()=>{
+  const clear=(x,z,r)=>nearestRoad({x,z}).distance-ROAD_WIDTH/2-r
+  assert.ok(clear(0,1,4.9)>5,'castle');assert.ok(clear(18,-2,4.5)>5,'lava pool')
+  assert.ok(clear(-42,18,7.25)>2,'village house');assert.ok(clear(-42,-18,7.25)>2,'village house')
+  assert.ok(clear(52,71,0)>5,'lagoon shore')
+  const arc=[0];for(let i=1;i<TRACK.length;i++)arc.push(arc[i-1]+Math.hypot(TRACK[i].x-TRACK[i-1].x,TRACK[i].z-TRACK[i-1].z))
+  const total=arc[arc.length-1]+Math.hypot(TRACK[0].x-TRACK[155].x,TRACK[0].z-TRACK[155].z)
+  for(let i=0;i<TRACK.length;i+=2)for(let j=i+2;j<TRACK.length;j+=2){
+    const along=Math.min(arc[j]-arc[i],total-(arc[j]-arc[i]))
+    if(along>ROAD_WIDTH*3)assert.ok(Math.hypot(TRACK[i].x-TRACK[j].x,TRACK[i].z-TRACK[j].z)>ROAD_WIDTH*2,`samples ${i} and ${j} overlap`)
+  }
+})
+test('player starts in the right-hand lane just behind the finish line',()=>{
+  const road=nearestRoad(SPAWN)
+  assert.ok(Math.abs(road.distance-LANE_OFFSETS[3])<.2)
+  assert.ok(FINISH_INDEX-START_INDEX>=3&&FINISH_INDEX-START_INDEX<=6)
+  const ahead=(FINISH_GATE.x-SPAWN.x)*FINISH_GATE.tx+(FINISH_GATE.z-SPAWN.z)*FINISH_GATE.tz
+  assert.ok(ahead>5&&ahead<15,'finish line is ahead of the grid')
+  assert.ok(-Math.sin(SPAWN.yaw)*FINISH_GATE.tx-Math.cos(SPAWN.yaw)*FINISH_GATE.tz>.95,'faces race direction')
+})
+test('boost pads and coins sit in lanes across the whole road',()=>{
+  for(const item of [...BOOST_PADS,...COINS])assert.ok(nearestRoad(item).distance<ROAD_WIDTH/2-1)
+  assert.equal(new Set(COINS.map(c=>Math.round(nearestRoad(c).distance))).size>=2,true)
+  assert.equal(BOOST_PADS.length,4);assert.equal(COINS.length,12)
 })
 test('kart builds speed with acceleration, brakes and stays within speed caps',()=>{
   let s=initialRaceState()

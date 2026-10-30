@@ -1,13 +1,18 @@
-// Control points and interpolation reproduce Higgsfield's version-3 Blender road
-// mesh (13 closed Catmull-Rom segments, 12 samples per segment, Blender X/Y -> glTF X/-Z).
-// Game rules use metres; this data is independent of Three.js and testable in Node.
+// Voxel Valley Grand Circuit: a closed Catmull-Rom loop (13 segments x 12 samples)
+// around the castle, kept clear of Blockhaven Village to the west and the lagoon to
+// the south. Points use Blender X/Y and map to glTF X/-Z, like the original
+// Higgsfield road it replaces. Game rules use metres and run in Node without Three.js.
 export const CONTROL_POINTS = [
-  [-27, -13], [-31, -3], [-28, 12], [-18, 21], [-5, 19],
-  [8, 17], [20, 22], [31, 13], [32, 0], [23, -12],
-  [9, -19], [-9, -20], [-21, -18],
+  [-22, -20], [-25, 0], [-21, 21], [-5, 39], [20, 43],
+  [44, 35], [64, 28], [78, 10], [78, -14], [68, -36],
+  [46, -55], [16, -57], [-6, -42],
 ]
 export const SAMPLES_PER_SEGMENT = 12
-export const ROAD_WIDTH = 7.2
+export const LANES = 4
+export const LANE_WIDTH = 3.6
+export const ROAD_WIDTH = LANES * LANE_WIDTH
+// Lane centres measured from the centre line; negative is the driver's left.
+export const LANE_OFFSETS = Object.freeze(Array.from({ length: LANES }, (_, i) => (i - (LANES - 1) / 2) * LANE_WIDTH))
 export const LAPS_TO_WIN = 3
 
 function catmull(a, b, c, d, t) {
@@ -58,9 +63,25 @@ export function gateAt(index, path = TRACK) {
   return { x: p.x, z: p.z, tx: tx/length, tz: tz/length, radius: ROAD_WIDTH/2 + .2 }
 }
 
-export const CHECKPOINT_1 = gateAt(46)
-export const CHECKPOINT_2 = gateAt(99)
-export const FINISH_GATE = { x: .5, z: 19.85, tx: -1, tz: 0, radius: ROAD_WIDTH/2 + .2 }
+// Point `offset` metres to the side of sample `index` (negative is the driver's left).
+export function trackPoint(index, offset = 0, path = TRACK) {
+  const g = gateAt(index, path)
+  return { x: g.x - g.tz*offset, z: g.z + g.tx*offset, yaw: Math.atan2(-g.tx, -g.tz) }
+}
+
+export const CHECKPOINT_1_INDEX = 46
+export const CHECKPOINT_2_INDEX = 99
+export const FINISH_INDEX = 130
+export const START_INDEX = 126
+export const CHECKPOINT_1 = gateAt(CHECKPOINT_1_INDEX)
+export const CHECKPOINT_2 = gateAt(CHECKPOINT_2_INDEX)
+export const FINISH_GATE = gateAt(FINISH_INDEX)
+// The player starts in the right-hand lane, about ten metres behind the line.
+export const START_POSE = Object.freeze(trackPoint(START_INDEX, LANE_OFFSETS[LANES - 1]))
+
+// Pickups cycle across the lanes so changing lanes is part of the racing line.
+export const BOOST_PADS = Object.freeze([28,70,105,143].map((index, i) => ({ index, ...trackPoint(index, LANE_OFFSETS[[1,2,0,3][i]]) })))
+export const COINS = Object.freeze([12,21,34,42,57,64,81,93,116,123,133,151].map((index, i) => ({ index, ...trackPoint(index, LANE_OFFSETS[i % LANES]) })))
 
 export function crossedGate(previous, current, gate) {
   // Signed plane crossing rejects approaching backwards and grazing the gate.
@@ -95,17 +116,15 @@ export function trackBarriers(path = TRACK, stride = 3) {
   for(let i=0;i<path.length;i+=stride){
     const p=path[i]
     const q=path[(i + stride) % path.length]
-    const dx=q.x-p.x, dz=q.z-p.z
-    const length=Math.hypot(dx,dz)
-    if(length < .01) continue
-    const nx=-dz/length, nz=dx/length
-    const yaw=Math.atan2(-dz,dx)
+    if(Math.hypot(q.x-p.x,q.z-p.z) < .01) continue
     for(const side of [-1,1]){
+      // Offset each end by its own normal so walls on the outside of a bend stay closed.
+      const a=trackPoint(i,(ROAD_WIDTH*.5+.20)*side,path), b=trackPoint(i+stride,(ROAD_WIDTH*.5+.20)*side,path)
+      const dx=b.x-a.x, dz=b.z-a.z
       barriers.push({
         id:`wall-${i}-${side}`,
-        x:(p.x+q.x)*.5 + nx*(ROAD_WIDTH*.5+.20)*side,
-        z:(p.z+q.z)*.5 + nz*(ROAD_WIDTH*.5+.20)*side,
-        yaw, length: length + .65,
+        x:(a.x+b.x)*.5, z:(a.z+b.z)*.5,
+        yaw:Math.atan2(-dz,dx), length:Math.hypot(dx,dz) + .65,
       })
     }
   }

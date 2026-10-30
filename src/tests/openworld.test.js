@@ -1,25 +1,26 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {advanceExplore,clampWorld,EXPLORE_SPAWN,fastTravel,initialExploreState,LANDMARK_OBSTACLES,mapPosition,RELICS,WORLD_BOUNDS,zoneAt,ZONES} from '../game/openWorld.js'
-import {initialRaceState,moveKart} from '../game/simulation.js'
-import {nearestRoad} from '../game/track.js'
+import {initialRaceState,moveKart,SPAWN,SAFE_ROAD_HALF_WIDTH} from '../game/simulation.js'
+import {nearestRoad,ROAD_WIDTH} from '../game/track.js'
 
 test('open world has ten varied destinations and unique collectible relics',()=>{
  assert.equal(ZONES.length,10);assert.equal(RELICS.length,10);assert.equal(new Set(ZONES.map(x=>x.id)).size,10)
  assert.ok(ZONES.every(x=>x.spawn&&x.name&&x.radius>=20))
 })
 test('exploration spawns OFF the racetrack',()=>{
- const s=initialExploreState();assert.equal(s.x,EXPLORE_SPAWN.x);assert.ok(nearestRoad(s).distance>3.6);assert.equal(s.lap,1)
+ const s=initialExploreState();assert.equal(s.x,EXPLORE_SPAWN.x);assert.ok(nearestRoad(s).distance>ROAD_WIDTH/2);assert.equal(s.lap,1)
 })
 test('race edge collision unchanged with options default',()=>{
  let s={...initialRaceState(),speed:15,yaw:0}
  for(let i=0;i<100;i++)s=moveKart(s,{forward:true},1/60)
- assert.ok(nearestRoad(s).distance<3.6)
+ assert.ok(nearestRoad(s).distance<=SAFE_ROAD_HALF_WIDTH+.001)
 })
-test('free roam drives through the original track edge',()=>{
- let s={...initialExploreState(),speed:9,yaw:0}
+test('free roam drives straight across the race circuit',()=>{
+ // Start in the infield and cross the north straight, which race barriers would stop.
+ let s={...initialExploreState(),x:5,z:-26,speed:9,yaw:0}
  for(let i=0;i<90;i++)s=advanceExplore(s,{forward:true},1/60)
- assert.ok(s.z<-45);assert.ok(s.elapsed>1);assert.equal(s.lap,1);assert.equal(s.checkpoint,0)
+ assert.ok(s.z<-52);assert.ok(s.elapsed>1);assert.equal(s.lap,1);assert.equal(s.checkpoint,0)
 })
 test('bounded open world stops kart at outer map edge',()=>{
  const p=clampWorld({x:10000,z:-10000})
@@ -47,7 +48,7 @@ test('fast travel moves to safe spawn and resets speed',()=>{
 })
 test('portal traversal returns explorer to Voxel Valley',()=>{
  const s={...initialExploreState(),x:0,z:-106.7,yaw:0,speed:10,portalCooldown:0},next=advanceExplore(s,{forward:true},.05)
- assert.equal(next.event,'portal');assert.ok(Math.hypot(next.x-8,next.z-18.2)<.01)
+ assert.equal(next.event,'portal');assert.ok(Math.hypot(next.x-SPAWN.x,next.z-SPAWN.z)<.01);assert.equal(next.yaw,SPAWN.yaw)
 })
 test('lava hazard respawns at the safe Ember approach',()=>{
  const s={...initialExploreState(),x:120,z:118,speed:0},next=advanceExplore(s,{},.05)

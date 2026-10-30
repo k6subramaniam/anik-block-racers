@@ -5,7 +5,7 @@
 ## Game modes
 
 - **Explore Open World:** roam a bounded ~312 × 264 metre terrain at your own pace, across five zones: Neon City, Crystal Ridge, Sunset Canyon, Ember Peaks, and Portal Grove. Discover each location, collect five floating relics, fast-travel from the map, and drive through the grove portal to return to Voxel Valley. Landmarks have simplified collision volumes, an exterior world border, and a lava rescue area.
-- **Race 3 Laps:** original Voxel Valley time trial. Drive the existing 7.2 metre roadway, pass the two checkpoints in order, and race for your best lap. Original speed boosts, coins and road collisions are retained.
+- **Race 3 Laps:** Voxel Valley Grand Circuit time trial against three AI rivals. The 325 m lap is a four-lane, 14.4 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
 
 ## Cool new Higgsfield 3D assets
 
@@ -31,8 +31,8 @@ A public Higgsfield CDN URL serves the portable GLB (877,672 bytes). The latest 
 
 - **Engine:** a synthesized kart engine whose pitch, brightness and volume follow speed, with extra whine during turbo.
 - **Sound effects:** coins, turbo, wall and obstacle bumps, bot hits and smashes, checkpoint chimes, lap and finish fanfares, discovery and relic sparkles, water splashes and countdown beeps.
-- **Music:** a looping chiptune soundtrack at 132 BPM, played quietly on menus and pause and at full volume while racing.
-- Everything is generated live with Web Audio (`src/game/sound.js`), so nothing extra is downloaded, and it shares one AudioContext with the announcer. Each layer can be turned off in Settings: **ENGINE & EFFECTS**, **MUSIC** and **ANNOUNCER VOICE**.
+- **Music:** an upbeat 120 BPM electronic racing track generated with Higgsfield (Seedance 2.0 Mini native audio; `public/audio/music.mp3`, 200 KB). A ~4 s intro plays once, then a 4-bar groove loops seamlessly. The music plays quietly on menus and pause and at full volume while racing. If the file can't load, a synthesized chiptune plays instead.
+- The engine and effects are synthesized live with Web Audio (`src/game/sound.js`), and everything shares one AudioContext with the announcer. Each layer can be turned off in Settings: **ENGINE & EFFECTS**, **MUSIC** and **ANNOUNCER VOICE**.
 
 ## Controls
 

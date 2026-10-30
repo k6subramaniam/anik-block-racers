@@ -2,7 +2,7 @@
  * racers follow real 3D terrain roads while voxel wildlife wanders and flees.
  * All distances are in metres. Defeated bots burst into cubes and respawn.
  */
-import { TRACK } from './track.js'
+import { TRACK, LANE_OFFSETS } from './track.js'
 
 const RACE_ARC = [0]
 for (let i=0;i<TRACK.length;i++) {
@@ -12,14 +12,14 @@ for (let i=0;i<TRACK.length;i++) {
 export const TRACK_LENGTH = RACE_ARC[RACE_ARC.length-1]
 
 export const RIVALS=Object.freeze([
-  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:113,speed:17.4,lane:-.9,radius:1.24,maxHp:105},
-  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:119,speed:19.0,lane:.75,radius:1.24,maxHp:105},
-  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:125,speed:18.1,lane:0,radius:1.24,maxHp:105},
+  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:113,speed:17.4,lane:LANE_OFFSETS[1],patrolLane:-.9,radius:1.24,maxHp:105},
+  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:119,speed:19.0,lane:LANE_OFFSETS[2],patrolLane:.75,radius:1.24,maxHp:105},
+  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:125,speed:18.1,lane:LANE_OFFSETS[0],patrolLane:0,radius:1.24,maxHp:105},
 ])
 
 export const CRITTERS=Object.freeze([
-  {id:'fox',name:'PIXEL FOX',kind:'animal',species:'fox',color:'#ff9848',home:{x:13,z:-43},radius:.95,maxHp:45,speed:2.4},
-  {id:'boar',name:'BLOCK BOAR',kind:'animal',species:'boar',color:'#c98c63',home:{x:30,z:-47},radius:1.05,maxHp:55,speed:2.2},
+  {id:'fox',name:'PIXEL FOX',kind:'animal',species:'fox',color:'#ff9848',home:{x:14,z:-62},radius:.95,maxHp:45,speed:2.4},
+  {id:'boar',name:'BLOCK BOAR',kind:'animal',species:'boar',color:'#c98c63',home:{x:32,z:-60},radius:1.05,maxHp:55,speed:2.2},
   {id:'sheep',name:'CLOUD SHEEP',kind:'animal',species:'sheep',color:'#e6e8f5',home:{x:-33,z:-40},radius:.95,maxHp:40,speed:1.8},
   {id:'crystal',name:'CRYSTAL CUB',kind:'animal',species:'cub',color:'#55dcf8',home:{x:-91,z:-42},radius:1.1,maxHp:52,speed:2.2},
   {id:'neon',name:'NEON FOX',kind:'animal',species:'fox',color:'#e64ddc',home:{x:92,z:-40},radius:.95,maxHp:45,speed:2.6},
@@ -60,8 +60,10 @@ export function makeNpcs(mode='race') {
   const racers=RIVALS.map((def,i)=>{
     const arc=mode==='race'?RACE_ARC[def.index]:0
     const distance=mode==='race'?arc:12+i*20
-    const at=mode==='race'?trackAt(distance,def.lane):along(PATHS[i],PATROL_ARCS[i],distance,def.lane)
-    return {...def,...at,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
+    // Race lanes span the four-lane circuit; open-world trails are narrower.
+    const lane=mode==='race'?def.lane:def.patrolLane
+    const at=mode==='race'?trackAt(distance,lane):along(PATHS[i],PATROL_ARCS[i],distance,lane)
+    return {...def,...at,lane,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
   })
   if(mode!=='explore')return racers
   const animals=CRITTERS.map((def,i)=>({

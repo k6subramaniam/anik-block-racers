@@ -1,6 +1,6 @@
-import { nearestRoad, stepRace, ROAD_WIDTH, TRACK } from './track.js'
+import { nearestRoad, stepRace, ROAD_WIDTH, TRACK, START_POSE } from './track.js'
 
-export const SPAWN = { x: 8, z: 18.2, yaw: Math.PI/2 }
+export const SPAWN = START_POSE
 export const MAX_SPEED = 23 // 82.8 km/h
 export const MAX_REVERSE = -7
 export const CAR_RADIUS = 0.84

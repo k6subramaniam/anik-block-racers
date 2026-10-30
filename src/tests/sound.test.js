@@ -18,3 +18,11 @@ test('soundtrack bars are 16-step patterns with playable notes',()=>{
  for(const bar of MUSIC_BARS)for(const line of [bar.bass,bar.lead]){assert.equal(line.length,16);for(const n of line)if(n!=null)assert.ok(n>=36&&n<=96)}
  assert.equal(midiToHz(69),440);assert.ok(Math.abs(midiToHz(57)-220)<1e-9)
 })
+test('Higgsfield music loop ships with loop points inside the track',async()=>{
+ const {MUSIC_FILE,MUSIC_LOOP}=await import('../game/sound.js'),{statSync}=await import('node:fs'),{join,resolve}=await import('node:path')
+ const size=statSync(join(resolve(import.meta.dirname,'../..'),'public/audio',MUSIC_FILE)).size
+ assert.ok(size>50000&&size<600000)
+ assert.ok(MUSIC_LOOP.start>0&&MUSIC_LOOP.end>MUSIC_LOOP.start&&MUSIC_LOOP.end<12.8)
+ // 120 BPM: the loop must be a whole number of 2-second bars so the groove does not stumble.
+ assert.equal(((MUSIC_LOOP.end-MUSIC_LOOP.start)/2)%1,0)
+})

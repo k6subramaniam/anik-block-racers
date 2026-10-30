@@ -2,7 +2,7 @@
  * racers follow real 3D terrain roads while voxel wildlife wanders and flees.
  * All distances are in metres. Defeated bots burst into cubes and respawn.
  */
-import { TRACK, LANE_OFFSETS } from './track.js'
+import { TRACK, LANE_OFFSETS, LANE_WIDTH, START_INDEX } from './track.js'
 
 const RACE_ARC = [0]
 for (let i=0;i<TRACK.length;i++) {
@@ -11,11 +11,19 @@ for (let i=0;i<TRACK.length;i++) {
 }
 export const TRACK_LENGTH = RACE_ARC[RACE_ARC.length-1]
 
+// An eight-kart grid: two rows of four lanes, the player in the back row's right lane.
+// The first three rivals also patrol open-world trails (`patrol` is their trail).
+const FRONT_ROW=START_INDEX+4
 export const RIVALS=Object.freeze([
-  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:113,speed:17.4,lane:LANE_OFFSETS[1],patrolLane:-.9,radius:1.24,maxHp:105},
-  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:119,speed:19.0,lane:LANE_OFFSETS[2],patrolLane:.75,radius:1.24,maxHp:105},
-  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:125,speed:18.1,lane:LANE_OFFSETS[0],patrolLane:0,radius:1.24,maxHp:105},
+  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:START_INDEX,speed:17.4,lane:LANE_OFFSETS[1],patrol:0,patrolLane:-.9,radius:1.24,maxHp:105},
+  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:FRONT_ROW,speed:19.0,lane:LANE_OFFSETS[2],patrol:1,patrolLane:.75,radius:1.24,maxHp:105},
+  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:FRONT_ROW,speed:18.1,lane:LANE_OFFSETS[0],patrol:2,patrolLane:0,radius:1.24,maxHp:105},
+  {id:'blaze',name:'BLAZE',kind:'racer',color:'#e8403a',index:FRONT_ROW,speed:18.6,lane:LANE_OFFSETS[3],radius:1.24,maxHp:105},
+  {id:'volt',name:'VOLT',kind:'racer',color:'#ffd23f',index:FRONT_ROW,speed:17.9,lane:LANE_OFFSETS[1],radius:1.24,maxHp:105},
+  {id:'rose',name:'ROSE',kind:'racer',color:'#ff6fb5',index:START_INDEX,speed:18.3,lane:LANE_OFFSETS[0],radius:1.24,maxHp:105},
+  {id:'onyx',name:'ONYX',kind:'racer',color:'#4b5260',index:START_INDEX,speed:17.0,lane:LANE_OFFSETS[2],radius:1.24,maxHp:105},
 ])
+const PATROLLING=RIVALS.filter(def=>def.patrol!=null)
 
 export const CRITTERS=Object.freeze([
   {id:'fox',name:'PIXEL FOX',kind:'animal',species:'fox',color:'#ff9848',home:{x:14,z:-62},radius:.95,maxHp:45,speed:2.4},
@@ -57,13 +65,13 @@ function along(points,arcs,metres,lane=0) {
 export function trackAt(distance,lane=0){return along(TRACK,RACE_ARC,distance,lane)}
 
 export function makeNpcs(mode='race') {
-  const racers=RIVALS.map((def,i)=>{
+  const racers=(mode==='race'?RIVALS:PATROLLING).map(def=>{
     const arc=mode==='race'?RACE_ARC[def.index]:0
-    const distance=mode==='race'?arc:12+i*20
+    const distance=mode==='race'?arc:12+def.patrol*20
     // Race lanes span the four-lane circuit; open-world trails are narrower.
     const lane=mode==='race'?def.lane:def.patrolLane
-    const at=mode==='race'?trackAt(distance,lane):along(PATHS[i],PATROL_ARCS[i],distance,lane)
-    return {...def,...at,lane,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
+    const at=mode==='race'?trackAt(distance,lane):along(PATHS[def.patrol],PATROL_ARCS[def.patrol],distance,lane)
+    return {...def,...at,lane,laneNow:lane,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
   })
   if(mode!=='explore')return racers
   const animals=CRITTERS.map((def,i)=>({
@@ -71,6 +79,20 @@ export function makeNpcs(mode='race') {
     health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,
   }))
   return [...racers,...animals]
+}
+
+const LANE_CHANGE_SPEED=2.4 // metres per second sideways
+const LOOK_AHEAD=9,CUT_IN_GAP=4
+
+// Overtaking: a rival closing on a kart in its lane moves to a free neighbouring lane.
+export function chooseLane(n,npcs,lapLength) {
+  const ahead=o=>((o.travel-n.travel)%lapLength+lapLength)%lapLength
+  const occupied=lane=>npcs.some(o=>o!==n&&o.kind==='racer'&&o.health>0&&!(o.respawn>0)
+    &&Math.abs((o.laneNow??o.lane)-lane)<LANE_WIDTH*.6
+    &&(ahead(o)<LOOK_AHEAD||ahead(o)>lapLength-CUT_IN_GAP))
+  if(!occupied(n.lane))return n.lane
+  const neighbours=LANE_OFFSETS.filter(l=>Math.abs(Math.abs(l-n.lane)-LANE_WIDTH)<.01)
+  return neighbours.find(l=>!occupied(l))??n.lane
 }
 
 export function advanceNpcs(npcs,dt,player,mode='race') {
@@ -85,22 +107,25 @@ export function advanceNpcs(npcs,dt,player,mode='race') {
       if(respawn>0)return {...n,hitCooldown,stun,burst,respawn}
       // Respawning restores the same actor. Destroyed bot score is not lost.
       const home=n.kind==='racer'
-        ?mode==='race'?trackAt(n.travel,n.lane):along(PATHS[RIVALS.findIndex(x=>x.id===n.id)],PATROL_ARCS[RIVALS.findIndex(x=>x.id===n.id)],n.travel,n.lane)
+        ?mode==='race'?trackAt(n.travel,n.laneNow??n.lane):along(PATHS[n.patrol],PATROL_ARCS[n.patrol],n.travel,n.lane)
         :{x:n.home.x,z:n.home.z,yaw:n.yaw}
       return {...n,...home,health:n.maxHp,respawn:0,burst:0,stun:0,hitCooldown:1.35,blastOffsetX:0,blastOffsetZ:0}
     }
     if(n.kind==='racer'){
       const i=RIVALS.findIndex(r=>r.id===n.id)
-      const path=mode==='race'?TRACK:PATHS[i]
-      const arc=mode==='race'?RACE_ARC:PATROL_ARCS[i]
+      const path=mode==='race'?TRACK:PATHS[n.patrol]
+      const arc=mode==='race'?RACE_ARC:PATROL_ARCS[n.patrol]
       const pathLen=arc[arc.length-1]
       const targetSpeed=n.speed*(1+.05*Math.sin(n.travel*.038+i*1.8))
       const advance=stun>0?0:targetSpeed*step
       const travel=n.travel+advance
       const wasLap=Math.floor(n.travel/pathLen),nowLap=Math.floor(travel/pathLen)
-      const pose=along(path,arc,travel,n.lane)
+      const lane=mode==='race'?chooseLane(n,npcs,pathLen):n.lane
+      const previousLane=n.laneNow??n.lane
+      const laneNow=previousLane+Math.max(-LANE_CHANGE_SPEED*step,Math.min(LANE_CHANGE_SPEED*step,lane-previousLane))
+      const pose=along(path,arc,travel,laneNow)
       const blastOffsetX=(n.blastOffsetX||0)*Math.exp(-step*4),blastOffsetZ=(n.blastOffsetZ||0)*Math.exp(-step*4)
-      return {...n,...pose,x:pose.x+blastOffsetX,z:pose.z+blastOffsetZ,blastOffsetX,blastOffsetZ,travel,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
+      return {...n,...pose,x:pose.x+blastOffsetX,z:pose.z+blastOffsetZ,blastOffsetX,blastOffsetZ,travel,lane,laneNow,laps:n.laps+Math.max(0,nowLap-wasLap),hitCooldown,stun,burst}
     }
     // Wildlife returns to home territory, but flees from nearby fast cars.
     const age=n.travel+step

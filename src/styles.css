@@ -343,3 +343,15 @@ button{touch-action:manipulation;cursor:pointer}
 /* Higgsfield-generated title key art behind the intro card; the existing scrims keep text legible. */
 .intro-backdrop{background:radial-gradient(ellipse at 64% 57%,rgba(7,18,23,.10),rgba(8,17,22,.55) 72%),linear-gradient(90deg,rgba(4,12,15,.86) 0%,rgba(4,12,15,.58) 45%,rgba(4,12,15,.05) 100%),url('/art/keyart.webp') center right/cover no-repeat,#071216}
 @media(max-width:650px){.intro-backdrop{background:linear-gradient(rgba(4,11,14,.70),rgba(4,11,14,.82)),url('/art/keyart.webp') 70% center/cover no-repeat,#071216}}
+/* In-game radio: station picker in Settings and a brief now-playing card. */
+.radio-options{grid-template-columns:repeat(3,1fr)}
+.radio-options button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1}
+.radio-options button small{font-size:9px;font-weight:700;letter-spacing:.4px;opacity:.72;text-transform:uppercase}
+.now-playing{position:absolute;z-index:20;top:86px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:9px 16px 9px 13px;border-radius:10px;background:rgba(10,23,23,.86);border:1px solid rgba(183,248,91,.45);color:#b7f85b;pointer-events:none;animation:now-playing-in .22s ease-out;backdrop-filter:blur(4px)}
+.now-playing div{display:flex;flex-direction:column;gap:2px}
+.now-playing small{font:800 9px 'DM Sans',sans-serif;letter-spacing:1.4px;color:#c3d1c6;text-transform:uppercase}
+.now-playing strong{font:900 19px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:#f3fbea}
+@keyframes now-playing-in{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(max-width:650px){.now-playing{top:62px;padding:7px 12px}.now-playing strong{font-size:16px}.radio-options button{min-height:42px;font-size:10px}}
+/* Landscape phones: the top centre holds the timer and weather, so show the card between the pedals. */
+@media(max-height:450px) and (orientation:landscape){.now-playing{top:auto;bottom:24px;padding:7px 12px}.now-playing strong{font-size:16px}}

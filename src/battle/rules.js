@@ -16,7 +16,7 @@ export const RACE_HAZARDS=Object.freeze([...TRACK_MINES,...TRACK_BARRELS])
 export function initialBattle(){
  return {time:0,health:100,bombs:3,mines:2,weaponCooldown:0,shield:3,stun:0,respawn:0,
   wrecks:0,hits:0,botHits:0,botKnockouts:0,shots:0,serial:0,knockX:0,knockZ:0,
-  lastBomb:0,lastMine:0,aiAt:{bolt:7,nova:10,pixel:13},lastSafe:{...SPAWN},
+  lastBomb:0,lastMine:0,aiAt:{bolt:7,nova:10,pixel:13,blaze:8.5,volt:11.5,rose:14.5,onyx:16},lastSafe:{...SPAWN},
   hazards:RACE_HAZARDS.map(h=>({...h,arm:0,fuse:null,cooldown:0})),supplies:SUPPLY_PADS.map(p=>({...p,cooldown:0})),bursts:[],events:[]}
 }
 export function segmentGap(a,b,p){

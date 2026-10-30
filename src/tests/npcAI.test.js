@@ -1,16 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {RIVALS,CRITTERS,makeNpcs,advanceNpcs,applyRamming,trackAt,TRACK_LENGTH} from '../game/npcAI.js'
+import {RIVALS,CRITTERS,makeNpcs,advanceNpcs,applyRamming,trackAt,TRACK_LENGTH,chooseLane} from '../game/npcAI.js'
 import {nearestRoad,ROAD_WIDTH,LANE_OFFSETS} from '../game/track.js'
-import {initialRaceState,SAFE_ROAD_HALF_WIDTH} from '../game/simulation.js'
+import {initialRaceState,SAFE_ROAD_HALF_WIDTH,SPAWN} from '../game/simulation.js'
 
-test('three AI racers start safely on the real track',()=>{
+test('seven AI racers fill an eight-kart grid safely on the real track',()=>{
   const n=makeNpcs('race')
-  assert.equal(n.length,3)
-  assert.deepEqual(n.map(a=>a.kind),['racer','racer','racer'])
+  assert.equal(n.length,7)
+  assert.ok(n.every(a=>a.kind==='racer'))
+  assert.equal(new Set(n.map(a=>a.id)).size,7);assert.equal(new Set(n.map(a=>a.color)).size,7)
   for(const npc of n){assert.ok(nearestRoad(npc).distance<ROAD_WIDTH/2-1);assert.ok(npc.health>0)}
-  // Rivals line up in different lanes of the four-lane grid.
-  assert.equal(new Set(n.map(a=>a.lane)).size,3);assert.ok(n.every(a=>LANE_OFFSETS.includes(a.lane)))
+  // Two rows of four lanes: every slot is unique and none is the player's.
+  assert.ok(n.every(a=>LANE_OFFSETS.includes(a.lane)))
+  assert.equal(new Set(n.map(a=>`${a.index}:${a.lane}`)).size,7)
+  for(const a of n)assert.ok(Math.hypot(a.x-SPAWN.x,a.z-SPAWN.z)>3)
   assert.ok(TRACK_LENGTH>300)
 })
 test('free-roam includes eight unique intelligent wildlife bots',()=>{
@@ -18,7 +21,9 @@ test('free-roam includes eight unique intelligent wildlife bots',()=>{
   assert.equal(n.length,11)
   assert.equal(new Set(n.map(a=>a.id)).size,11)
   assert.equal(n.filter(a=>a.kind==='animal').length,8)
-  assert.ok(RIVALS.length===3 && CRITTERS.length===8)
+  assert.ok(RIVALS.length===7 && CRITTERS.length===8)
+  // Only the three original rivals patrol the open-world trails.
+  assert.deepEqual(n.filter(a=>a.kind==='racer').map(a=>a.id),['bolt','nova','pixel'])
 })
 test('AI racers move around the course without leaving the track',()=>{
   let n=makeNpcs('race')
@@ -93,4 +98,25 @@ test('overtaking and rear-ending a moving AI rival damages the kart',()=>{
   assert.equal(hit.event.kind,'npc-hit')
   assert.ok(hit.event.damage>=17)
   assert.ok(hit.npcs[0].health<rival.health)
+})
+test('rivals overtake by moving to a free neighbouring lane',()=>{
+  const me={id:'a',kind:'racer',health:1,travel:0,lane:LANE_OFFSETS[1],laneNow:LANE_OFFSETS[1]}
+  const slow={id:'b',kind:'racer',health:1,travel:5,lane:LANE_OFFSETS[1],laneNow:LANE_OFFSETS[1]}
+  assert.equal(chooseLane(me,[me],TRACK_LENGTH),LANE_OFFSETS[1])
+  assert.ok([LANE_OFFSETS[0],LANE_OFFSETS[2]].includes(chooseLane(me,[me,slow],TRACK_LENGTH)))
+  // Both neighbours busy: hold the lane rather than cut in.
+  const left={...slow,id:'c',lane:LANE_OFFSETS[0],laneNow:LANE_OFFSETS[0]},right={...slow,id:'d',lane:LANE_OFFSETS[2],laneNow:LANE_OFFSETS[2]}
+  assert.equal(chooseLane(me,[me,slow,left,right],TRACK_LENGTH),LANE_OFFSETS[1])
+})
+test('a full grid races laps without karts driving through each other',()=>{
+  let n=makeNpcs('race'),overlaps=0,frames=0,changes=0
+  const player={...initialRaceState(),x:9999,z:9999}
+  for(let i=0;i<4000;i++){
+    const before=n.map(r=>r.lane)
+    n=advanceNpcs(n,.05,player,'race');frames++
+    changes+=n.filter((r,k)=>r.lane!==before[k]).length
+    for(let a=0;a<n.length;a++)for(let b=a+1;b<n.length;b++)if(Math.hypot(n[a].x-n[b].x,n[a].z-n[b].z)<1.5)overlaps++
+  }
+  assert.ok(changes>0,'rivals change lanes to pass')
+  assert.ok(overlaps/frames<.02,`karts overlapped in ${overlaps} of ${frames} frames`)
 })

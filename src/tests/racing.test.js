@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TRACK, ROAD_WIDTH, LANES, LANE_WIDTH, LANE_OFFSETS, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, FINISH_INDEX, START_INDEX, BOOST_PADS, COINS, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
+import { TRACK, ROAD_WIDTH, LANES, LANE_WIDTH, LANE_OFFSETS, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, FINISH_INDEX, START_INDEX, BOOST_PADS, gateAt, COINS, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
 import { initialRaceState, moveKart, advanceKart, SPAWN, MAX_SPEED, SAFE_ROAD_HALF_WIDTH, formatTime, nearestObstacle } from '../game/simulation.js'
 
 function before(g, distance=.55){return {x:g.x-g.tx*distance,z:g.z-g.tz*distance}}
@@ -27,13 +27,14 @@ test('circuit keeps clear of the castle, village and lagoon and never overlaps i
     if(along>ROAD_WIDTH*3)assert.ok(Math.hypot(TRACK[i].x-TRACK[j].x,TRACK[i].z-TRACK[j].z)>ROAD_WIDTH*2,`samples ${i} and ${j} overlap`)
   }
 })
-test('player starts in the right-hand lane just behind the finish line',()=>{
+test('player starts in the back row, right-hand lane, behind the finish line',()=>{
   const road=nearestRoad(SPAWN)
   assert.ok(Math.abs(road.distance-LANE_OFFSETS[3])<.2)
-  assert.ok(FINISH_INDEX-START_INDEX>=3&&FINISH_INDEX-START_INDEX<=6)
+  assert.ok(FINISH_INDEX-START_INDEX>=6&&FINISH_INDEX-START_INDEX<=10)
   const ahead=(FINISH_GATE.x-SPAWN.x)*FINISH_GATE.tx+(FINISH_GATE.z-SPAWN.z)*FINISH_GATE.tz
-  assert.ok(ahead>5&&ahead<15,'finish line is ahead of the grid')
-  assert.ok(-Math.sin(SPAWN.yaw)*FINISH_GATE.tx-Math.cos(SPAWN.yaw)*FINISH_GATE.tz>.95,'faces race direction')
+  assert.ok(ahead>12&&ahead<24,'finish line is ahead of the grid')
+  const here=gateAt(START_INDEX)
+  assert.ok(-Math.sin(SPAWN.yaw)*here.tx-Math.cos(SPAWN.yaw)*here.tz>.999,'faces race direction')
 })
 test('boost pads and coins sit in lanes across the whole road',()=>{
   for(const item of [...BOOST_PADS,...COINS])assert.ok(nearestRoad(item).distance<ROAD_WIDTH/2-1)

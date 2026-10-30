@@ -77,3 +77,31 @@
   .battle-game .studio-profile-gauge strong{display:inline;font-size:13px;margin:0 3px}
   .battle-game .br-danger{top:193px}
 }
+/* Portrait phones: a slimmer HUD so the road stays visible, and larger thumb controls. */
+@media (max-width:600px) and (orientation:portrait){
+  .battle-game .br-altitude{display:none}
+  .battle-game .studio-profile-gauge{display:none}
+  .battle-game .br-turbo{display:none}
+  .battle-game .br-turbo.active{display:block;top:154px}
+  .battle-game .br-stats{top:62px}
+  .battle-game .br-stats>div{padding:4px 7px 3px}
+  .battle-game .br-stats b{font-size:17px}
+  .battle-game .br-health{top:106px;width:calc(100% - 136px)}
+  .battle-game .br-rivals{top:106px;width:118px;padding:3px 6px}
+  .battle-game .br-rivals>div{padding:1px 0}
+  .br-controls{padding:8px 10px max(14px,env(safe-area-inset-bottom))}
+  .br-controls>div{gap:8px}
+  .battle-game .br-pedal{width:64px;height:64px;border-radius:12px}
+  .battle-game .br-pedal svg{width:30px;height:30px}
+  .battle-game .br-pedal.gas{width:76px;height:86px}
+  .battle-game .br-pedal.drift{width:54px;height:48px}
+  .br-controls .br-speed{bottom:160px;left:12px;font-size:22px}
+  .br-deploy{bottom:106px;left:10px;right:10px;justify-content:space-between}
+  .br-deploy button{flex:1;min-width:0;min-height:46px;padding:6px 8px}
+}
+/* Power-up button: dim until a ? box is collected, then glows until used. */
+.br-deploy .br-item{border-color:#b7f85b66;background:#1f2b22e6;color:#d9f7b8}
+.br-deploy .br-item b{font-size:20px;line-height:1;margin-right:2px}
+.br-deploy .br-item.has-item{border-color:#c6ff74;background:#2f4a22f2;color:#efffd8;animation:br-item-ready 1.1s ease-in-out infinite alternate}
+.br-deploy .br-item.has-item b{color:#c6ff74}
+@keyframes br-item-ready{from{box-shadow:0 0 0 #b7f85b00}to{box-shadow:0 0 16px #b7f85b99}}

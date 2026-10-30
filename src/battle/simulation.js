@@ -7,6 +7,7 @@ import {resolveVehicleContacts} from './collisions.js'
 import {garageModifiers} from '../studio/garage.js'
 import {createStuntWorld,advanceStunts} from '../studio/stunts.js'
 import {createPowerups,advancePowerups,TURBO_TOP_SPEED} from './powerups.js'
+import {createItemBoxes,advanceCircuitItems,aiWantsItem} from './circuitItems.js'
 export const BATTLE_STEP=1/60
 export const BATTLE_LAPS=3
 export const MAX_HAZARDS=40
@@ -27,13 +28,13 @@ export function createBattle(trackId='blast',options={}){
   const mods=garageModifiers(options.multiplayer?null:options.garage)
   const actors=DRIVERS.map((d,i)=>({...d,topSpeed:i===0?mods.topSpeed:options.multiplayer&&i===1?27:d.topSpeed,engineFactor:i===0?mods.acceleration:1,gripFactor:i===0?mods.grip:1,armorMult:i===0?mods.armorMultiplier:1,maxHp:i===0?mods.maxHp:100,turboFactor:i===0?mods.turboDuration:1,color:i===0?mods.color:d.color,...atDistance(track,i*4,d.lane),speed:0,hp:i===0?mods.maxHp:100,shield:1.5,stun:0,contactStun:0,kickX:0,kickZ:0,slipX:0,slipZ:0,crashes:0,collisionDamage:0,
     lap:1,nextGate:1,passed:0,safeS:i*4,respawn:0,knockouts:0,damageDealt:0,damageTaken:0,
-    turbo:0,turboCount:0,bombCooldown:0,mineCooldown:0,repairCooldown:0,bombHeld:false,mineHeld:false,finished:false,finishTick:null}))
+    turbo:0,turboCount:0,bombCooldown:0,mineCooldown:0,repairCooldown:0,bombHeld:false,mineHeld:false,item:null,itemHeld:false,finished:false,finishTick:null}))
   const mines=[28,...[.22,.40,.56,.69,.89].map(f=>f*track.length)]
   if(trackId!=='blast')mines.push(track.length*.48,track.length*.95)
   const hazards=mines.map((s,i)=>({...atDistance(track,s,i===0?0:i%2?2.7:-2.7),groundY:atDistance(track,s).y,id:`track-mine-${i}`,type:'mine',owner:null,y:atDistance(track,s).y+.2,arm:.7,fuse:-1,cooldown:0,persistent:true,life:Infinity}))
   for(const [i,f] of [.15,.33,.63,.82].entries())hazards.push({...atDistance(track,track.length*f,i%2?-4:4),id:`track-crate-${i}`,type:'crate',owner:null,groundY:atDistance(track,track.length*f).y,y:atDistance(track,track.length*f).y+.6,arm:0,fuse:-1,cooldown:0,persistent:true,life:Infinity})
   const weatherMode=normalizeWeather(options.weather)
-  return {trackId,stunts:createStuntWorld(trackId),remoteActive:!!options.multiplayer,laps:normalizeLaps(options.laps),weatherMode,weather:raceWeather(0,weatherMode,trackId),pairCooldowns:{},powerups:createPowerups(trackId),tick:0,actors,hazards,explosions:[],events:[],nextId:0,done:false,finishOrder:[],totalBlasts:0}
+  return {trackId,stunts:createStuntWorld(trackId),remoteActive:!!options.multiplayer,laps:normalizeLaps(options.laps),weatherMode,weather:raceWeather(0,weatherMode,trackId),pairCooldowns:{},powerups:createPowerups(trackId),itemBoxes:createItemBoxes(track),itemRolls:0,tick:0,actors,hazards,explosions:[],events:[],nextId:0,done:false,finishOrder:[],totalBlasts:0}
 }
 export function aiInput(actor,track,state){
   if(!alive(actor))return {}
@@ -43,7 +44,8 @@ export function aiInput(actor,track,state){
   const nearby=state.actors.some(a=>a.id!==actor.id&&alive(a)&&Math.hypot(a.x-actor.x,a.z-actor.z)<25)
   return {forward:true,backward:false,steer:clamp(-error*2.4,-1,1),speedLimit:Math.max(8,actor.topSpeed*(1-Math.min(.7,Math.abs(error)*.55))),
     bomb:nearby&&state.tick>180&&state.tick%(390+index*53)===0,
-    mine:nearby&&state.tick>300&&state.tick%(610+index*67)===0}
+    mine:nearby&&state.tick>300&&state.tick%(610+index*67)===0,
+    item:aiWantsItem(actor,state)}
 }
 export function integrateActor(actor,input,track,dt=BATTLE_STEP,weather=raceWeather(0,'clear')){
   let a={...actor,shield:decay(actor.shield,dt),stun:decay(actor.stun,dt),bombCooldown:decay(actor.bombCooldown,dt),mineCooldown:decay(actor.mineCooldown,dt),repairCooldown:decay(actor.repairCooldown,dt),turbo:decay(actor.turbo,dt),contactStun:decay(actor.contactStun,dt)}
@@ -105,8 +107,8 @@ export function damageBlast(actor,blast){
     kickX:actor.kickX+ux*knock,kickZ:actor.kickZ+uz*knock,respawn:hp===0?2:0}}
 }
 function explode(state,hazard){
-  const radius=hazard.type==='mine'?7.5:hazard.type==='crate'?10:9
-  const power=hazard.type==='mine'?62:hazard.type==='crate'?90:85
+  const radius=hazard.type==='mine'?7.5:hazard.type==='crate'?10:hazard.type==='rocket'?5.5:9
+  const power=hazard.type==='mine'?62:hazard.type==='crate'?90:hazard.type==='rocket'?60:85
   const blast={id:`blast-${state.nextId++}`,x:hazard.x,y:hazard.y,groundY:hazard.groundY||0,z:hazard.z,radius,power,type:hazard.type,owner:hazard.owner,ttl:.7}
   state.totalBlasts++;state.explosions.push(blast);state.events.push({kind:'explosion',...blast})
   hazard.fuse=-1
@@ -123,7 +125,7 @@ function explode(state,hazard){
   if(hazard.owner)state.actors=state.actors.map(a=>a.id===hazard.owner?{...a,damageDealt:a.damageDealt+creditedDamage,knockouts:a.knockouts+creditedKnockouts}:a)
   // Chain reactions are delayed and visibly warned, never recursive in one tick.
   for(const other of state.hazards){
-    if(other===hazard||other.removed||other.cooldown>0||other.arm>0)continue
+    if(other===hazard||other.removed||other.cooldown>0||other.arm>0||other.type==='oil'||other.type==='rocket')continue
     if(Math.hypot(other.x-hazard.x,other.z-hazard.z,other.y-hazard.y)<radius&&other.fuse<0)other.fuse=.32
   }
 }
@@ -141,7 +143,8 @@ export function advanceHazards(state,oldActors,dt=BATTLE_STEP){
     }
     if(h.arm>0){h.arm=decay(h.arm,dt);continue}
     if(h.fuse>=0){h.fuse-=dt;if(h.fuse<=0)explode(state,h);continue}
-    if(h.type!=='bomb'&&state.actors.some(a=>{
+    // Rockets and oil slicks are flown and triggered by advanceCircuitItems.
+    if(h.type!=='bomb'&&h.type!=='rocket'&&h.type!=='oil'&&state.actors.some(a=>{
       if(!alive(a)||a.shield>0||Math.abs((a.y||0)-(h.groundY||0))>1.8)return false
       const old=oldActors.find(k=>k.id===a.id)||a
       // Teleport/rescue positions cannot trigger a swept trail of mines.
@@ -171,7 +174,7 @@ export function battleRanking(state){
 export function stepBattle(previous,input={},remoteInput=null){
   if(previous.done)return previous
   const track=battleTrack(previous.trackId),dt=BATTLE_STEP
-  const state={...previous,tick:previous.tick+1,events:[],hazards:previous.hazards.map(h=>({...h})),
+  const state={...previous,tick:previous.tick+1,events:[],hazards:previous.hazards.map(h=>h.touched?{...h,touched:{...h.touched}}:{...h}),
     explosions:previous.explosions.filter(e=>e.ttl>dt).map(e=>({...e,ttl:e.ttl-dt})),powerups:previous.powerups.map(p=>({...p})),finishOrder:[...previous.finishOrder],stunts:{pads:previous.stunts.pads.map(p=>({...p})),props:previous.stunts.props.map(p=>({...p})),bursts:previous.stunts.bursts.map(b=>({...b}))}}
   state.weather=raceWeather(state.tick,state.weatherMode,state.trackId)
   const commands=previous.actors.map((a,i)=>i===0?input:i===1&&remoteInput?remoteInput:aiInput(a,track,previous))
@@ -185,6 +188,7 @@ export function stepBattle(previous,input={},remoteInput=null){
     if(cmd.mine&&!before.mineHeld)deployHazard(state,a,'mine')
     a.bombHeld=!!cmd.bomb;a.mineHeld=!!cmd.mine
   }
+  advanceCircuitItems(state,previous.actors,commands,dt,explode,MAX_HAZARDS)
   state.playerSteer=Number(!!input.right)-Number(!!input.left)
   advanceHazards(state,previous.actors,dt)
   advanceStunts(state,previous,dt)

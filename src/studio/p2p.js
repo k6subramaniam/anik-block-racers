@@ -6,7 +6,7 @@ export const P2P_PROTOCOL=1
 export const P2P_MAX_MESSAGE=120000
 const STUN=[{urls:'stun:stun.l.google.com:19302'}]
 export function sanitizeInput(input){
- const o={};for(const key of ['forward','backward','left','right','drift','bomb','mine'])o[key]=input?.[key]===true
+ const o={};for(const key of ['forward','backward','left','right','drift','bomb','mine','item'])o[key]=input?.[key]===true
  if(Number.isFinite(input?.steer))o.steer=Math.max(-1,Math.min(1,input.steer))
  return o
 }

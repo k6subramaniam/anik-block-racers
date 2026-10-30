@@ -40,6 +40,8 @@ Four rows of rainbow **?** boxes span all four lanes. The first row is 11 m past
 
 Rivals collect boxes too. They use turbo and shield straight away, fire rockets when you're ahead of them, and drop oil when you're close behind. Boxes regrow 6 s after you take one. A rival's pickup doesn't remove a box for you. Power-ups sit alongside the existing bombs (**B**), mines (**Q**), barrels, and ammo and repair pads. They're off when Battle Race is switched off for a classic race. Rules are in `src/battle/items.js`.
 
+The five **Battle Race circuits** (Blast, Canyon, Frost, Skybridge, Summit) have the same power-ups: four rows of **?** boxes per lap, the first 40 m after the start, plus an item button between BOMB and MINE (**F** on a keyboard). Rules are in `src/battle/circuitItems.js`. In portrait on a phone, these circuits use a pulled-back camera, a slimmer HUD and larger touch buttons.
+
 ### In-game radio
 
 Six stations. Press **N** or tap the radio icon to cycle through them, or pick one under **Settings → MUSIC**. A short card shows what's playing, and your choice is remembered.

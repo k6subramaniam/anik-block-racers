@@ -6,8 +6,8 @@ import {LANE_OFFSETS,trackPoint} from '../game/track.js'
 // rules.js imports this module too; its helpers are only called at step time, not at load.
 import {segmentGap,safeTrackPoint,BATTLE_LIMITS} from './rules.js'
 
-export const ITEM_KINDS=Object.freeze(['turbo','shield','rocket','oil'])
-export const ITEM_LABELS=Object.freeze({turbo:'TURBO',shield:'SHIELD',rocket:'ROCKET',oil:'OIL SLICK'})
+export {ITEM_KINDS,ITEM_LABELS,rollItem} from './itemKinds.js'
+import {rollItem} from './itemKinds.js'
 export const ITEM_RULES=Object.freeze({
  boxRespawn:6,turbo:2.4,shield:6,rocketSpeed:38,rocketLife:3.2,rocketRange:70,
  oilLife:15,oilRadius:2.1,oilStun:1.1,botTurbo:2.5,aiHold:5,aiGrace:8,
@@ -17,14 +17,6 @@ export const ITEM_RULES=Object.freeze({
 // a no-steering launch off the grid drives through one.
 export const ITEM_BOX_ROWS=Object.freeze([18,66,112,135])
 export const ITEM_BOXES=Object.freeze(ITEM_BOX_ROWS.flatMap(index=>LANE_OFFSETS.map((lane,i)=>({id:`item-${index}-${i}`,...trackPoint(index,lane)}))))
-
-// Deterministic per pickup, so races replay identically and tests are stable.
-export function rollItem(seed){
- let x=Math.imul(seed|0,2654435761)>>>0
- x=Math.imul(x^(x>>>15),2246822519)>>>0
- x=(x^(x>>>13))>>>0
- return ITEM_KINDS[x%ITEM_KINDS.length]
-}
 
 export function initialItems(){
  return {item:null,lastItem:0,itemBoxes:ITEM_BOXES.map(b=>({...b,cooldown:0})),botItems:{},itemRolls:0,turboUses:0,rocketsFired:0}

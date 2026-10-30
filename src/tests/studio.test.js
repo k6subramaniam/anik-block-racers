@@ -87,7 +87,7 @@ test('builder drag and height editing are bounded, and saves are local',()=>{
  assert.ok(saveBlueprint(b,s));assert.equal(readBlueprints(s).length,1)
 })
 test('peer control sanitizer allows only driving inputs',()=>{
- assert.deepEqual(sanitizeInput({forward:true,left:1,bomb:true,private:'secret'}),{forward:true,backward:false,left:false,right:false,drift:false,bomb:true,mine:false})
+ assert.deepEqual(sanitizeInput({forward:true,left:1,bomb:true,private:'secret'}),{forward:true,backward:false,left:false,right:false,drift:false,bomb:true,mine:false,item:false})
 })
 test('peer SDP messages are versioned and reject wrong roles',()=>{
  const offer=encodeSignal({type:'offer',sdp:'v=0\r\no=- 123 1 IN IP4 0.0.0.0'})

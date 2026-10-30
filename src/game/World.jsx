@@ -19,6 +19,7 @@ import {VOXEL_TREE_COLLIDERS} from './voxelStyle.js'
 import FrontierWorld from './FrontierWorld.jsx'
 import {buildObstacleIndex, nearbyObstacles} from './frontier.js'
 import {initialBattle,stepBattle} from '../battle/rules.js'
+const ITEM_EVENTS=new Set(['item-pickup','item-turbo','item-shield','rocket-launch','rival-rocket','oil-dropped','oil-spin','rival-spin'])
 import {useBattleStore,battleSnapshot} from '../battle/BattleUI.jsx'
 import BattleFX from '../battle/BattleFX.jsx'
 
@@ -109,6 +110,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     if(phase!=='racing'){
       battleRef.current.lastBomb=battleStore.actions.bomb
       battleRef.current.lastMine=battleStore.actions.mine
+      battleRef.current.lastItem=battleStore.actions.item||0
     }
   },[phase,mode,battleStore,battleRef])
 
@@ -116,7 +118,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
     battleRef.current=initialBattle()
-    battleStore.actions={bomb:0,mine:0}
+    battleStore.actions={bomb:0,mine:0,item:0}
     battleStore.update(battleSnapshot(battleRef.current,phase,mode))
     npcRef.current=makeNpcs(mode)
     villagerRef.current=makeVillagers()
@@ -201,9 +203,12 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
         if(battling&&next.event!=='finished'){
           const combat=stepBattle(battleRef.current,next,npcRef.current,dt,battleStore.actions,{previousPlayer:old,previousBots:oldNpcs})
           battleRef.current=combat.battle;next=combat.player;npcRef.current=combat.bots
-          const priority=['player-wreck','battle-respawn','player-blast','blast-knockout','repair','ammo','bomb-thrown','mine-dropped','rival-weapon']
+          const priority=['player-wreck','battle-respawn','player-blast','blast-knockout','oil-spin','rival-rocket','item-pickup','rocket-launch','item-turbo','item-shield','oil-dropped','rival-spin','rival-oil','repair','ammo','bomb-thrown','mine-dropped','rival-weapon']
           const notice=priority.map(kind=>combat.battle.events.find(e=>e.kind===kind)).find(Boolean)
           if(notice)battleRef.current.notice={...notice,time:combat.battle.time}
+          // Power-up moments also reach the sound engine and announcer.
+          const itemSound=combat.battle.events.find(e=>ITEM_EVENTS.has(e.kind))
+          if(itemSound&&!frameEvent)frameEvent=itemSound.kind
         }
         next.boostTimer=Math.max(0,(next.boostTimer||0)-dt)
         next.boostCooldown=Math.max(0,(old.boostCooldown||0)-dt)

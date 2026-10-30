@@ -3,6 +3,7 @@
  */
 import {TRACK,gateAt,nearestRoad} from '../game/track.js'
 import {SPAWN,SAFE_ROAD_HALF_WIDTH} from '../game/simulation.js'
+import {initialItems,stepItems} from './items.js'
 const cap=(n,a,b)=>Math.max(a,Math.min(b,n))
 export const BATTLE_LIMITS=Object.freeze({health:100,bombs:5,mines:4,dynamic:24,bursts:16})
 export function trackPose(index,lane=0){
@@ -17,7 +18,8 @@ export function initialBattle(){
  return {time:0,health:100,bombs:3,mines:2,weaponCooldown:0,shield:3,stun:0,respawn:0,
   wrecks:0,hits:0,botHits:0,botKnockouts:0,shots:0,serial:0,knockX:0,knockZ:0,
   lastBomb:0,lastMine:0,aiAt:{bolt:7,nova:10,pixel:13,blaze:8.5,volt:11.5,rose:14.5,onyx:16},lastSafe:{...SPAWN},
-  hazards:RACE_HAZARDS.map(h=>({...h,arm:0,fuse:null,cooldown:0})),supplies:SUPPLY_PADS.map(p=>({...p,cooldown:0})),bursts:[],events:[]}
+  hazards:RACE_HAZARDS.map(h=>({...h,arm:0,fuse:null,cooldown:0})),supplies:SUPPLY_PADS.map(p=>({...p,cooldown:0})),bursts:[],events:[],
+  ...initialItems()}
 }
 export function segmentGap(a,b,p){
  const dx=b.x-a.x,dz=b.z-a.z,den=dx*dx+dz*dz
@@ -43,11 +45,12 @@ function makeWeapon(state,actor,kind,owner){
   arm:mine?.9:.15,fuse:mine?null:1.3,life:mine?18:4,cooldown:0}
 }
 function available(h){return h.cooldown<=0&&!h.spent}
+const BLAST={barrel:{radius:7,damage:70},bomb:{radius:7.5,damage:72},mine:{radius:6,damage:58},rocket:{radius:4.5,damage:62}}
 function damageAt(explosion,actor){
- const radius=explosion.kind==='barrel'?7:explosion.kind==='bomb'?7.5:6
+ const {radius,damage}=BLAST[explosion.kind]||BLAST.mine
  const d=Math.hypot(actor.x-explosion.x,actor.z-explosion.z)
  if(d>radius)return 0
- return Math.round((explosion.kind==='barrel'?70:explosion.kind==='bomb'?72:58)*(.45+.55*(1-d/radius)))
+ return Math.round(damage*(.45+.55*(1-d/radius)))
 }
 function pushFrom(boom,actor){
  let dx=actor.x-boom.x,dz=actor.z-boom.z,l=Math.hypot(dx,dz)
@@ -64,7 +67,8 @@ export function stepBattle(previous,player,bots,dt,actions={},options={}){
  let p={...player},ns=bots.map(n=>({...n}))
  const s={...previous,time:previous.time+step,events:[],aiAt:{...previous.aiAt},
   weaponCooldown:Math.max(0,previous.weaponCooldown-step),shield:Math.max(0,previous.shield-step),stun:Math.max(0,previous.stun-step),
-  hazards:previous.hazards.map(h=>({...h})),supplies:previous.supplies.map(p=>({...p,cooldown:Math.max(0,p.cooldown-step)})),
+  hazards:previous.hazards.map(h=>h.touched?{...h,touched:{...h.touched}}:{...h}),
+  itemBoxes:previous.itemBoxes.map(b=>({...b})),botItems:{...previous.botItems},supplies:previous.supplies.map(p=>({...p,cooldown:Math.max(0,p.cooldown-step)})),
   bursts:previous.bursts.map(b=>({...b,age:b.age+step})).filter(b=>b.age<.85)}
  const recovering=previous.respawn>0
  if(recovering){
@@ -107,11 +111,14 @@ export function stepBattle(previous,player,bots,dt,actions={},options={}){
    }
   }
  }
+ const detonate=[]
+ p=stepItems(s,p,before,ns,oldBots,step,actions.item||0,recovering,detonate,options.ai!==false)
  const actors=[...(!recovering&&s.health>0?[{id:'player',...p,previous:before}]:[]),...ns.filter(n=>n.kind==='racer'&&n.health>0&&n.respawn<=0).map(n=>({...n,previous:oldBots.find(o=>o.id===n.id)||n}))]
  // Bots receive a fresh shield as they reappear; wrecked actors never retrigger mines.
  for(const n of ns)if(n.kind==='racer'&&(n.respawn>0||n.health<=0))n.blastShield=s.time+2.5
- const detonate=[]
  for(const h of s.hazards){
+  // Rockets and oil slicks are flown and triggered by stepItems.
+  if(h.kind==='rocket'||h.kind==='oil'){h.life-=step;if(h.kind==='oil'&&h.life<=0)h.spent=true;continue}
   if(h.cooldown>0){
    h.cooldown=Math.max(0,h.cooldown-step)
    if(h.cooldown===0){h.arm=2;h.fuse=null;h.spent=false}
@@ -141,7 +148,7 @@ export function stepBattle(previous,player,bots,dt,actions={},options={}){
   const h=detonate.shift()
   if(exploded.has(h.id)||h.spent||h.cooldown>0)continue
   exploded.add(h.id);h.spent=true;h.fuse=null
-  s.bursts.push({id:`burst-${s.serial++}`,x:h.x,z:h.z,kind:h.kind,age:0,radius:h.kind==='bomb'?7.5:h.kind==='barrel'?7:6})
+  s.bursts.push({id:`burst-${s.serial++}`,x:h.x,z:h.z,kind:h.kind,age:0,radius:(BLAST[h.kind]||BLAST.mine).radius})
   s.events.push({kind:'explosion',source:h.kind})
   // A half-second shield prevents one chain reaction consuming several lives.
   const damage=!recovering&&s.health>0&&s.shield<=0?damageAt(h,p):0

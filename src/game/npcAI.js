@@ -184,7 +184,7 @@ export function applyRamming(player,npcs,dt=0.016) {
     const reward=destroyed?(n.kind==='racer'?100:40):0
     points+=reward
     if(destroyed){if(n.kind==='racer')racerKnockouts++;else animalKnockouts++}
-    if(!outcome)outcome={kind:destroyed?'npc-smash':'npc-hit',npcName:n.name,npcKind:n.kind,damage,health,points:reward}
+    if(!outcome)outcome={kind:destroyed?'npc-smash':'npc-hit',npcId:n.id,npcName:n.name,npcKind:n.kind,damage,health,points:reward}
   }
   if(!outcome)return {player:nextPlayer,npcs:cars,event:null,points:0,racerKnockouts:0,animalKnockouts:0}
   return {player:nextPlayer,npcs:cars,event:outcome,points,racerKnockouts,animalKnockouts}

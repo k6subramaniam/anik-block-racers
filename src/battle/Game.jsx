@@ -5,6 +5,7 @@ import {BATTLE_TRACKS,battleTrack} from './tracks.js'
 import {LEVEL_ART} from './levelArt.js'
 import {createBattle,battleRanking} from './simulation.js'
 import {ITEM_LABELS} from './itemKinds.js'
+import {createChatter} from '../game/chatter.js'
 const ITEM_ICONS={turbo:'»',shield:'◎',rocket:'➤',oil:'◍'}
 import {normalizeLaps,normalizeWeather,WEATHER_OPTIONS,parseRacePreferences} from './weather.js'
 import {getRenderBudget,isCoarsePointer,safeStoredQuality} from '../game/mobile.js'
@@ -94,6 +95,23 @@ export default function BattleGame({onExit}){
   const [quality,setQuality]=useState(()=>{try{return safeStoredQuality(localStorage.getItem('anik-quality'))}catch{return 'auto'}})
   const [reduced,setReduced]=useState(()=>matchMedia('(prefers-reduced-motion: reduce)').matches)
   phaseRef.current=phase
+  // Rival voices share the main game's VOICES setting.
+  const chatter=useRef(null);if(!chatter.current)chatter.current=createChatter(import.meta.env.BASE_URL)
+  const [chat,setChat]=useState(null),chatTimer=useRef(null)
+  useEffect(()=>{
+    let on=true;try{on=localStorage.getItem('anik-voice')!=='off'}catch{}
+    chatter.current.setEnabled(on)
+    const unlock=()=>chatter.current.unlock()
+    window.addEventListener('pointerdown',unlock);window.addEventListener('keydown',unlock)
+    return()=>{window.removeEventListener('pointerdown',unlock);window.removeEventListener('keydown',unlock);if(chatTimer.current)clearTimeout(chatTimer.current)}
+  },[])
+  const onChat=useCallback(line=>{
+    const a=engineRef.current.state.actors.find(x=>x.id===line.id)
+    chatter.current.say(line)
+    setChat({key:Math.random(),name:a?.name||line.id.toUpperCase(),color:a?.color||'#d4fa60',text:line.text})
+    if(chatTimer.current)clearTimeout(chatTimer.current)
+    chatTimer.current=setTimeout(()=>setChat(null),2600)
+  },[])
   const budget=getRenderBudget(quality,{coarse:isCoarsePointer(),memory:navigator.deviceMemory,cores:navigator.hardwareConcurrency})
   const start=useCallback(()=>{
     if(!ready||!['lobby','results','paused'].includes(phaseRef.current)||network==='guest'||(network==='host'&&!multiplayerRef.current?.connected))return
@@ -167,7 +185,7 @@ export default function BattleGame({onExit}){
   const event=hud.notice&&hud.notice.until>hud.tick?hud.notice:null
   const eventText=event?.kind==='stunt-smash'?`BLOCK SMASH +${event.points}`:event?.kind==='stunt-land'?`BIG AIR +${event.points}`:event?.kind==='stunt-launch'?'JUMP PAD LAUNCHED':event?.kind==='turbo-pickup'?'TURBO POWER-UP!':event?.kind==='item-pickup'?`POWER-UP · ${ITEM_LABELS[event.item]||'ITEM'}`:event?.kind==='item-turbo'?'TURBO!':event?.kind==='item-shield'?'SHIELD UP · 6s':event?.kind==='rocket-launch'?'ROCKET AWAY!':event?.kind==='oil-dropped'?'OIL SLICK DROPPED':event?.kind==='oil-spin'?'OIL SLICK! SPUN OUT':event?.kind==='turbo-bonus'?'BONUS TURBO BURST!':event?.kind==='crash'?`KART COLLISION${event.damage?` −${event.damage} ARMOR`:''}`:event?.kind==='damage'?`BLAST HIT −${event.damage} ARMOR`:event?.kind==='knockout'?'KART DISABLED':event?.kind==='repair'?'+40 ARMOR REPAIR':event?.kind==='lap'?'LAP COMPLETE':event?.kind==='deploy'?(event.type==='bomb'?'BOMB THROWN':'MINE DROPPED'):null
   return <div className={`battle-game br-phase-${phase}`} data-testid="battle-game" data-track={trackId} data-phase={phase} data-laps={engineRef.current.state.laps} data-weather-mode={weatherMode} data-player-x={hud.actors[0].x} data-player-z={hud.actors[0].z} data-player-y={hud.elevation} data-player-yaw={hud.actors[0].yaw} data-speed={hud.speed}>
-    <div className="br-world"><Boundary><BattleScene key={`${trackId}-${garage.selected}`} multiplayerRef={multiplayerRef} viewerIndex={network==='guest'?1:0} engineRef={engineRef} inputRef={inputRef} phase={phase} track={track} budget={budget} cameraMode={camera} reduced={reduced} onReady={setReady} onHud={setHud} onFinish={finish}/></Boundary></div>
+    <div className="br-world"><Boundary><BattleScene key={`${trackId}-${garage.selected}`} multiplayerRef={multiplayerRef} viewerIndex={network==='guest'?1:0} engineRef={engineRef} inputRef={inputRef} phase={phase} track={track} budget={budget} cameraMode={camera} reduced={reduced} onReady={setReady} onHud={setHud} onChat={onChat} onFinish={finish}/></Boundary></div>
     <header className="br-header"><button className="br-brand" onClick={()=>{controls.reset();onExit()}} aria-label="Back to ANIK game modes"><span>A</span><b>ANIK <small>BATTLE RACE</small></b></button><span className="br-track-label">{LEVEL_ART[track.id]?.name||track.name} · <span data-testid="battle-weather">{hud.weather}</span></span><nav><button onClick={()=>setCamera(c=>c==='chase'?'aerial':'chase')} aria-label="Change battle camera"><Camera/></button><button onClick={openSettings} aria-label="Battle graphics settings"><Settings2/></button><button onClick={pause} disabled={!['racing','paused'].includes(phase)} aria-label="Pause or resume battle" data-testid="battle-pause">{phase==='paused'?<Play/>:<Pause/>}</button></nav></header>
     {phase!=='lobby'&&phase!=='results'&&<>
       <div className="br-stats"><div><small>LAP</small><b data-testid="battle-lap">{hud.lap}<em>/{hud.laps}</em></b></div><div><small>POSITION</small><b>{hud.rank}<em>/4</em></b></div><div><small>RACE TIME</small><b data-testid="battle-time">{clock(hud.seconds)}</b></div></div>
@@ -182,6 +200,7 @@ export default function BattleGame({onExit}){
       <div className="br-deploy"><button onClick={()=>deploy('bomb')} data-testid="battle-bomb" disabled={hud.bombCooldown>0||hud.respawn>0}><Bomb size={18}/><span>BOMB <small>{hud.bombCooldown>0?`${hud.bombCooldown.toFixed(1)}s`:'READY · B'}</small></span></button><button onClick={useItem} data-testid="battle-item" data-item={hud.item||''} className={`br-item ${hud.item?'has-item':''}`} disabled={!hud.item||hud.respawn>0} aria-label={hud.item?`Use ${ITEM_LABELS[hud.item]}`:'No power-up held'}><b>{hud.item?ITEM_ICONS[hud.item]:'?'}</b><span>{hud.item?ITEM_LABELS[hud.item]:'NO ITEM'} <small>{hud.item?'USE · F':'GET A ? BOX'}</small></span></button><button onClick={()=>deploy('mine')} data-testid="battle-mine" disabled={hud.mineCooldown>0||hud.respawn>0}><TriangleAlert size={18}/><span>MINE <small>{hud.mineCooldown>0?`${hud.mineCooldown.toFixed(1)}s`:'READY · V'}</small></span></button></div>
       <div className="br-controls"><div><Pedal action="left" label="Steer battle kart left" controls={controls}><ArrowLeft/></Pedal><Pedal action="right" label="Steer battle kart right" controls={controls}><ArrowRight/></Pedal></div><div className="br-speed">{Math.round(Math.abs(hud.speed)*3.6)}<small>KM/H</small></div><div><Pedal action="drift" label="Drift battle kart" controls={controls} className="drift">DRIFT</Pedal><Pedal action="backward" label="Brake battle kart" controls={controls}><ArrowDown/></Pedal><Pedal action="forward" label="Accelerate battle kart" controls={controls} className="gas"><ArrowUp/><small>GAS</small></Pedal></div></div>
       {eventText&&<div className="br-event" role="status">{eventText}</div>}
+      {chat&&<div className="br-chat" key={chat.key} role="status" data-testid="battle-rival-chat" style={{'--rival':chat.color}}><b>{chat.name}</b><span>“{chat.text}”</span></div>}
       {hud.respawn>0&&<div className="br-recover" data-testid="battle-recovery"><RotateCcw size={26}/><strong>RECOVERING YOUR KART</strong><span>Back at your last checkpoint in {hud.respawn.toFixed(1)}s</span></div>}
     </>}
     {phase==='lobby'&&!settings&&<div className="br-lobby-wrap"><section className="br-lobby"><div className="br-eyebrow">NEW · FIVE REFERENCE-INSPIRED 3D WORLDS</div><h1>RACE. DODGE.<br/><em>BLAST.</em></h1><p>Choose from five visually distinct voxel worlds: kart stadium, autumn forest, alpine lighthouses, rainbow block city and neon desert. <strong>All five retain AI rivals, turbo, collisions and changing weather.</strong></p>

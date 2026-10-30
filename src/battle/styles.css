@@ -105,3 +105,9 @@
 .br-deploy .br-item.has-item{border-color:#c6ff74;background:#2f4a22f2;color:#efffd8;animation:br-item-ready 1.1s ease-in-out infinite alternate}
 .br-deploy .br-item.has-item b{color:#c6ff74}
 @keyframes br-item-ready{from{box-shadow:0 0 0 #b7f85b00}to{box-shadow:0 0 16px #b7f85b99}}
+/* Rival chatter bubble, coloured for the driver who is talking. */
+.br-chat{position:absolute;z-index:11;left:50%;top:27%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 15px;border-radius:14px;background:#0f2530e6;border:2px solid var(--rival);pointer-events:none;animation:br-chat-in .2s ease-out;max-width:min(82vw,420px);text-align:center}
+.br-chat b{font-size:11px;letter-spacing:1.5px;color:var(--rival)}
+.br-chat span{font:800 17px 'Barlow Condensed',Impact,sans-serif;color:#f4fbea}
+@keyframes br-chat-in{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (max-width:600px) and (orientation:portrait){.br-chat{top:22%}}

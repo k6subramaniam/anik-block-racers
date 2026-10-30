@@ -1,4 +1,5 @@
 import { nearestRoad, stepRace, ROAD_WIDTH, TRACK, START_POSE } from './track.js'
+import { deflectAlongWall, wallSpeed, WALL_RECOVERY } from './wallRecovery.js'
 
 export const SPAWN = START_POSE
 export const MAX_SPEED = 23 // 82.8 km/h
@@ -46,7 +47,7 @@ export function moveKart(state, input, delta, obstacles = [], options = {}) {
   const turnStrength = Math.min(1, Math.abs(speed)/10)
   const reverse = speed < 0 ? -1 : 1
   const turnRate = (drifting ? 2.05 : 1.37) * (.35 + .65*turnStrength)
-  const yaw = state.yaw - steering*turnRate*dt*reverse*traction
+  let yaw = state.yaw - steering*turnRate*dt*reverse*traction
   let x = state.x - Math.sin(yaw)*speed*dt
   let z = state.z - Math.cos(yaw)*speed*dt
   // Lateral gusts displace light karts; geometry constraints below still apply.
@@ -60,10 +61,13 @@ export function moveKart(state, input, delta, obstacles = [], options = {}) {
   const road = freeRoam ? null : nearestRoad({x,z}, TRACK)
   if (!freeRoam && road.distance > SAFE_ROAD_HALF_WIDTH) {
     const overshootX=x-road.x, overshootZ=z-road.z
-    const inv=1/Math.max(road.distance,1e-6)
-    x = road.x+overshootX*inv*SAFE_ROAD_HALF_WIDTH
-    z = road.z+overshootZ*inv*SAFE_ROAD_HALF_WIDTH
-    speed = -Math.sign(speed)*Math.min(Math.abs(speed)*.19, 3)
+    const inv=1/Math.max(road.distance,1e-6),edge=SAFE_ROAD_HALF_WIDTH-WALL_RECOVERY.inset
+    x = road.x+overshootX*inv*edge
+    z = road.z+overshootZ*inv*edge
+    // Glance off the wall: turn to run along it and keep most of the speed.
+    const a=TRACK[road.index],b=TRACK[(road.index+1)%TRACK.length],len=Math.hypot(b.x-a.x,b.z-a.z)||1
+    yaw = deflectAlongWall(yaw,(b.x-a.x)/len,(b.z-a.z)/len)
+    speed = wallSpeed(speed)
     event='wall'
     collisions++
   }

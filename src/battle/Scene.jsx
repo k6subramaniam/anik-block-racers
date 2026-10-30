@@ -1,3 +1,4 @@
+import {initialChatter,pickChatter} from '../game/chatter.js'
 import React,{Suspense,useEffect,useLayoutEffect,useMemo,useRef} from 'react'
 import {Canvas,useFrame} from '@react-three/fiber'
 import {useGLTF} from '@react-three/drei'
@@ -156,7 +157,7 @@ function TurboPickups({engineRef}){
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.84,0]}><ringGeometry args={[1.05,1.25,24]}/><meshBasicMaterial color="#f6ff79" side={THREE.DoubleSide} transparent opacity={.8}/></mesh>
   </group>)}</group>
 }
-function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish,multiplayerRef,viewerIndex=0}){
+function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish,onChat,multiplayerRef,viewerIndex=0}){
   const {scene}=useGLTF(MODEL)
   const models=useMemo(()=>engineRef.current.state.actors.map(a=>{
     const source=scene.getObjectByName('PREFAB_kart_emerald');if(!source)throw new Error('Kart asset missing')
@@ -172,14 +173,29 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
   useLayoutEffect(()=>{if(phase==='paused')onHud(battleHud(engineRef.current.state,viewerIndex))},[phase,onHud,engineRef])
   useFrame(({camera,scene,size},rawDt)=>{
     const engine=engineRef.current,dt=Math.min(.25,Math.max(0,rawDt))
+    const chatBumps=[]
     if(phase==='racing'&&!engine.state.done&&viewerIndex!==1){
       engine.acc+=dt
       while(engine.acc>=BATTLE_STEP&&!engine.state.done){
         engine.state=stepBattle(engine.state,inputRef.current,multiplayerRef?.current?.connected&&multiplayerRef.current.role==='host'?multiplayerRef.current.remoteInput:null);engine.acc-=BATTLE_STEP
         if(engine.replay)recordRaceReplay(engine.replay,engine.state)
         inputRef.current.bomb=false;inputRef.current.mine=false;inputRef.current.item=false
+        for(const e of engine.state.events)if(e.kind==='crash'&&(e.actor==='player'||e.other==='player'))chatBumps.push(e.actor==='player'?e.other:e.actor)
         const event=engine.state.events.find(e=>e.actor==='player'&&['crash','damage','knockout','repair','lap','finished','stunt-smash','stunt-land','stunt-launch','turbo-pickup','turbo-bonus','item-pickup','item-turbo','item-shield','rocket-launch','oil-dropped','oil-spin'].includes(e.kind))||engine.state.events.find(e=>e.actor==='player'&&e.kind==='deploy')
         if(event)engine.state.notice={...event,until:engine.state.tick+110}
+      }
+    }
+    // Rival chatter: AI drivers taunt on close passes and complain when bumped.
+    if(phase==='racing'&&onChat){
+      const chat=engine.chat||(engine.chat={state:initialChatter(),scan:0})
+      chat.scan-=dt
+      if(chatBumps.length||chat.scan<=0){
+        chat.scan=.3
+        const me=engine.state.actors[viewerIndex]||engine.state.actors[0]
+        const near=engine.state.actors.filter(a=>a.id!==me.id&&a.hp>0).map(a=>({id:a.id,distance:Math.hypot(a.x-me.x,a.z-me.z,(a.y||0)-(me.y||0))}))
+        const picked=pickChatter(chat.state,engine.state.tick/60,{bumps:chatBumps,near})
+        chat.state=picked.state
+        if(picked.line)onChat(picked.line)
       }
     }
     const connection=multiplayerRef?.current

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {BATTLE_TRACKS,battleTrack,atDistance,nearestOnTrack,crossedGate} from '../battle/tracks.js'
-import {createBattle,stepBattle,aiInput,damageBlast,deployHazard,advanceHazards,advanceRaceProgress,battleRanking,BOMB_COOLDOWN,MINE_COOLDOWN,MAX_HAZARDS} from '../battle/simulation.js'
+import {createBattle,stepBattle,aiInput,damageBlast,deployHazard,advanceHazards,advanceRaceProgress,battleRanking,integrateActor,BOMB_COOLDOWN,MINE_COOLDOWN,MAX_HAZARDS} from '../battle/simulation.js'
 import {makeArena} from '../showdown/rules.js'
 const copy=value=>structuredClone(value)
 function vulnerable(){const s=createBattle();s.actors=s.actors.map(a=>({...a,shield:0}));return s}
@@ -149,4 +149,11 @@ test('finished races are immutable and have an unambiguous finishing order',()=>
 test('existing sd1 and sd2 challenge geometry and rules are unchanged',()=>{
  assert.equal(makeArena('sd1-d20261028').bots.length,10);assert.equal(makeArena('sd1-d20261028').bounds.maxX,41)
  assert.equal(makeArena('sd2-d20261028').bots.length,16);assert.equal(makeArena('sd2-d20261028').bounds.maxX,82)
+})
+test('battle circuit barriers deflect a kart along the edge and keep its speed',()=>{
+ const t=battleTrack('blast'),s=createBattle('blast'),p=atDistance(t,60,0)
+ let a={...s.actors[0],x:p.x,z:p.z,y:p.y,yaw:p.yaw-Math.PI/2,speed:20,slipX:0,slipZ:0},hit=false
+ for(let i=0;i<90;i++){a=integrateActor(a,{forward:true},t);if(nearestOnTrack(t,a).distance>t.width/2-1.4)hit=true}
+ assert.ok(hit,'reached the barrier');assert.ok(a.speed>12,'kept momentum')
+ const n=nearestOnTrack(t,a);assert.ok(Math.abs(-Math.sin(a.yaw)*n.dx-Math.cos(a.yaw)*n.dz)>.85,'heading along the track')
 })

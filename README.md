@@ -42,6 +42,24 @@ Rivals collect boxes too. They use turbo and shield straight away, fire rockets 
 
 The five **Battle Race circuits** (Blast, Canyon, Frost, Skybridge, Summit), and tracks made in the Track Creator, race 50% wider than their authored width (18–21 m for the built-in circuits). They have the same power-ups: four rows of **?** boxes per lap, the first 40 m after the start, plus an item button between BOMB and MINE (**F** on a keyboard). Rules are in `src/battle/circuitItems.js`. In portrait on a phone, these circuits use a pulled-back camera, a slimmer HUD and larger touch buttons.
 
+### Rival chatter and wall recovery
+
+Each AI driver talks in their own Higgsfield voice (Seed Audio presets). They throw out a taunt when they pass close to you and complain when you bump into them. A speech bubble in their colour shows who's talking.
+
+| Rival | Voice | Close pass | Bump |
+|---|---|---|---|
+| BOLT | Benji | "Beep beep! Coming through!" | "Hey! Watch the paint job!" |
+| NOVA | Juno | "Catch me if you can, slowpoke!" | "Rude! I was here first!" |
+| PIXEL | Archie | "Lagging behind, are we?" | "Ouch! You glitched me!" |
+| BLAZE | Desmond | "Feel the heat!" | "You just bumped a legend!" |
+| VOLT | Ginger | "Zap! Out of my way!" | "Shocking driving!" |
+| ROSE | Isla | "Smell you later!" | "Watch the petals!" |
+| ONYX | Grady | "Quiet. Like a rock." | "I am a boulder. You bounce." |
+
+Each rival has two lines of each kind (`public/audio/chatter/`). Bumps speak straight away. Close passes need to be within 9 m, with at least 4.5 s between any two lines and 14 s before the same rival speaks again. It works in the main race and on the battle circuits, and **Settings → VOICES** turns it off together with the announcer.
+
+Hitting a wall no longer bounces you backwards. Your kart glances off: it turns most of the way to run along the barrier, keeps about 70% of its speed, and is nudged back onto the road, so you can keep driving. This applies in both modes (`src/game/wallRecovery.js`).
+
 ### In-game radio
 
 Six stations. Press **N** or tap the radio icon to cycle through them, or pick one under **Settings → MUSIC**. A short card shows what's playing, and your choice is remembered.

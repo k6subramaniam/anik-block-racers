@@ -8,6 +8,7 @@ import {garageModifiers} from '../studio/garage.js'
 import {createStuntWorld,advanceStunts} from '../studio/stunts.js'
 import {createPowerups,advancePowerups,TURBO_TOP_SPEED} from './powerups.js'
 import {createItemBoxes,advanceCircuitItems,aiWantsItem} from './circuitItems.js'
+import {deflectAlongWall,wallSpeed,WALL_RECOVERY} from '../game/wallRecovery.js'
 export const BATTLE_STEP=1/60
 export const BATTLE_LAPS=3
 export const MAX_HAZARDS=40
@@ -64,7 +65,7 @@ export function integrateActor(actor,input,track,dt=BATTLE_STEP,weather=raceWeat
   if(Math.abs(speed)>.4||gas)speed-=9.81*surface.grade*along*dt
   speed=clamp(speed,-6,a.turbo>0?TURBO_TOP_SPEED:(Number.isFinite(input.speedLimit)?Math.min(a.topSpeed,input.speedLimit):a.topSpeed))
   const steer=Number.isFinite(input.steer)?clamp(input.steer,-1,1):Number(!!input.right)-Number(!!input.left)
-  const yaw=a.yaw-steer*(input.drift?2.05:1.45)*Math.max(.47,track.grip*weather.grip)*(a.gripFactor||1)*Math.min(1,Math.abs(speed)/7)*dt*(speed<0?-1:1)
+  let yaw=a.yaw-steer*(input.drift?2.05:1.45)*Math.max(.47,track.grip*weather.grip)*(a.gripFactor||1)*Math.min(1,Math.abs(speed)/7)*dt*(speed<0?-1:1)
   const desiredX=-Math.sin(yaw)*speed,desiredZ=-Math.cos(yaw)*speed
   const traction=1-Math.exp(-dt*(18*track.grip*weather.grip)*(input.drift?.65:1))
   const slipX=(a.slipX??desiredX)+(desiredX-(a.slipX??desiredX))*traction
@@ -73,12 +74,16 @@ export function integrateActor(actor,input,track,dt=BATTLE_STEP,weather=raceWeat
   let x=a.x+(slipX+a.kickX+weather.windX*.28*exposure)*dt,z=a.z+(slipZ+a.kickZ+weather.windZ*.28*exposure)*dt
   const n=nearestOnTrack(track,{x,z,y:a.y}),half=track.width/2-.95
   let kickX=a.kickX*Math.exp(-4*dt),kickZ=a.kickZ*Math.exp(-4*dt)
+  let slideX=slipX,slideZ=slipZ
   if(n.distance>half){
-    x=n.x+(x-n.x)/n.distance*half;z=n.z+(z-n.z)/n.distance*half
-    speed*=.65;kickX*=.25;kickZ*=.25
+    const edge=half-WALL_RECOVERY.inset
+    x=n.x+(x-n.x)/n.distance*edge;z=n.z+(z-n.z)/n.distance*edge
+    // Glance off the barrier: turn along it, keep most momentum, and drop the sideways slide.
+    yaw=deflectAlongWall(yaw,n.dx,n.dz);speed=wallSpeed(speed);kickX*=.25;kickZ*=.25
+    slideX=-Math.sin(yaw)*speed;slideZ=-Math.cos(yaw)*speed
   }
   const deck=nearestOnTrack(track,{x,z,y:a.y})
-  return {...a,x,z,y:deck.y,s:deck.s,grade:deck.grade,pitch:Math.atan(deck.grade*along),yaw,speed,kickX,kickZ,slipX,slipZ}
+  return {...a,x,z,y:deck.y,s:deck.s,grade:deck.grade,pitch:Math.atan(deck.grade*along),yaw,speed,kickX,kickZ,slipX:slideX,slipZ:slideZ}
 }
 export function deployHazard(state,actor,type){
   if(!['bomb','mine'].includes(type)||!alive(actor)||state.hazards.filter(h=>!h.removed).length>=MAX_HAZARDS)return false

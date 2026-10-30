@@ -112,3 +112,17 @@ test('timer formatting includes hundredths',()=>{
   assert.equal(formatTime(79.156),'01:19.15')
   assert.equal(formatTime(null),'--:--.--')
 })
+test('hitting a wall glances the kart along it instead of bouncing it backwards',()=>{
+ // Drive straight across the road from the grid: the right-hand wall is a few metres away.
+ let s={...initialRaceState(),speed:18,yaw:initialRaceState().yaw-Math.PI/2},hit=null
+ for(let i=0;i<120&&!hit;i++){s=moveKart(s,{forward:true},1/60);if(s.event==='wall')hit=s}
+ assert.ok(hit,'reached the wall')
+ assert.ok(hit.speed>8,'keeps most of its momentum (no reverse bounce)')
+ const road=nearestRoad(hit),a=TRACK[road.index],b=TRACK[(road.index+1)%TRACK.length],len=Math.hypot(b.x-a.x,b.z-a.z)
+ const along=Math.abs(-Math.sin(hit.yaw)*(b.x-a.x)/len-Math.cos(hit.yaw)*(b.z-a.z)/len)
+ assert.ok(along>.85,'now heading mostly along the wall')
+ // Keep the throttle on: the kart drives away instead of grinding the barrier.
+ let walls=0
+ for(let i=0;i<120;i++){s=moveKart(s,{forward:true},1/60);if(s.event==='wall')walls++}
+ assert.ok(walls<12,`only ${walls} further wall frames`);assert.ok(s.speed>12)
+})

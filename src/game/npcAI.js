@@ -2,7 +2,7 @@
  * racers follow real 3D terrain roads while voxel wildlife wanders and flees.
  * All distances are in metres. Defeated bots burst into cubes and respawn.
  */
-import { TRACK, LANE_OFFSETS, LANE_WIDTH, START_INDEX } from './track.js'
+import { TRACK, LANE_OFFSETS, GRID_LANES, LANE_WIDTH, START_INDEX } from './track.js'
 
 const RACE_ARC = [0]
 for (let i=0;i<TRACK.length;i++) {
@@ -11,17 +11,17 @@ for (let i=0;i<TRACK.length;i++) {
 }
 export const TRACK_LENGTH = RACE_ARC[RACE_ARC.length-1]
 
-// An eight-kart grid: two rows of four lanes, the player in the back row's right lane.
+// An eight-kart grid: two rows across the four middle lanes, the player in the back row's right lane.
 // The first three rivals also patrol open-world trails (`patrol` is their trail).
 const FRONT_ROW=START_INDEX+4
 export const RIVALS=Object.freeze([
-  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:START_INDEX,speed:17.4,lane:LANE_OFFSETS[1],patrol:0,patrolLane:-.9,radius:1.24,maxHp:105},
-  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:FRONT_ROW,speed:19.0,lane:LANE_OFFSETS[2],patrol:1,patrolLane:.75,radius:1.24,maxHp:105},
-  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:FRONT_ROW,speed:18.1,lane:LANE_OFFSETS[0],patrol:2,patrolLane:0,radius:1.24,maxHp:105},
-  {id:'blaze',name:'BLAZE',kind:'racer',color:'#e8403a',index:FRONT_ROW,speed:18.6,lane:LANE_OFFSETS[3],radius:1.24,maxHp:105},
-  {id:'volt',name:'VOLT',kind:'racer',color:'#ffd23f',index:FRONT_ROW,speed:17.9,lane:LANE_OFFSETS[1],radius:1.24,maxHp:105},
-  {id:'rose',name:'ROSE',kind:'racer',color:'#ff6fb5',index:START_INDEX,speed:18.3,lane:LANE_OFFSETS[0],radius:1.24,maxHp:105},
-  {id:'onyx',name:'ONYX',kind:'racer',color:'#4b5260',index:START_INDEX,speed:17.0,lane:LANE_OFFSETS[2],radius:1.24,maxHp:105},
+  {id:'bolt',name:'BOLT',kind:'racer',color:'#f97338',index:START_INDEX,speed:17.4,lane:GRID_LANES[1],patrol:0,patrolLane:-.9,radius:1.24,maxHp:105},
+  {id:'nova',name:'NOVA',kind:'racer',color:'#c15dff',index:FRONT_ROW,speed:19.0,lane:GRID_LANES[2],patrol:1,patrolLane:.75,radius:1.24,maxHp:105},
+  {id:'pixel',name:'PIXEL',kind:'racer',color:'#47daf5',index:FRONT_ROW,speed:18.1,lane:GRID_LANES[0],patrol:2,patrolLane:0,radius:1.24,maxHp:105},
+  {id:'blaze',name:'BLAZE',kind:'racer',color:'#e8403a',index:FRONT_ROW,speed:18.6,lane:GRID_LANES[3],radius:1.24,maxHp:105},
+  {id:'volt',name:'VOLT',kind:'racer',color:'#ffd23f',index:FRONT_ROW,speed:17.9,lane:GRID_LANES[1],radius:1.24,maxHp:105},
+  {id:'rose',name:'ROSE',kind:'racer',color:'#ff6fb5',index:START_INDEX,speed:18.3,lane:GRID_LANES[0],radius:1.24,maxHp:105},
+  {id:'onyx',name:'ONYX',kind:'racer',color:'#4b5260',index:START_INDEX,speed:17.0,lane:GRID_LANES[2],radius:1.24,maxHp:105},
 ])
 const PATROLLING=RIVALS.filter(def=>def.patrol!=null)
 
@@ -68,7 +68,7 @@ export function makeNpcs(mode='race') {
   const racers=(mode==='race'?RIVALS:PATROLLING).map(def=>{
     const arc=mode==='race'?RACE_ARC[def.index]:0
     const distance=mode==='race'?arc:12+def.patrol*20
-    // Race lanes span the four-lane circuit; open-world trails are narrower.
+    // Race lanes span the six-lane circuit; open-world trails are narrower.
     const lane=mode==='race'?def.lane:def.patrolLane
     const at=mode==='race'?trackAt(distance,lane):along(PATHS[def.patrol],PATROL_ARCS[def.patrol],distance,lane)
     return {...def,...at,lane,laneNow:lane,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
@@ -184,7 +184,7 @@ export function applyRamming(player,npcs,dt=0.016) {
     const reward=destroyed?(n.kind==='racer'?100:40):0
     points+=reward
     if(destroyed){if(n.kind==='racer')racerKnockouts++;else animalKnockouts++}
-    if(!outcome)outcome={kind:destroyed?'npc-smash':'npc-hit',npcName:n.name,npcKind:n.kind,damage,health,points:reward}
+    if(!outcome)outcome={kind:destroyed?'npc-smash':'npc-hit',npcId:n.id,npcName:n.name,npcKind:n.kind,damage,health,points:reward}
   }
   if(!outcome)return {player:nextPlayer,npcs:cars,event:null,points:0,racerKnockouts:0,animalKnockouts:0}
   return {player:nextPlayer,npcs:cars,event:outcome,points,racerKnockouts,animalKnockouts}

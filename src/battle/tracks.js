@@ -13,6 +13,7 @@ export const BATTLE_TRACKS = Object.freeze([
     points:[[0,74,0],[60,74,0],[100,45,6],[100,-10,16],[76,-54,26],[28,-78,32],[-30,-78,32],[-84,-48,25],[-94,-4,17],[-64,16,10],[-90,45,4],[-42,74,0]]},
 ])
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v))
+export const TRACK_WIDTH_SCALE=1.5
 const cache=new Map()
 let customSpec=null
 export function registerBuiltTrack(spec){
@@ -34,7 +35,8 @@ export function battleTrack(id='blast'){
   }
   const arcs=[0]
   for(let i=0;i<path.length;i++){const a=path[i],b=path[(i+1)%path.length];arcs.push(arcs.at(-1)+Math.hypot(b.x-a.x,b.z-a.z))}
-  const result={...spec,path,arcs,length:arcs.at(-1),maxHeight:Math.max(...path.map(p=>p.y))}
+  // Every circuit, built-in or player-made, races 50% wider than its authored width.
+  const result={...spec,width:spec.width*TRACK_WIDTH_SCALE,authoredWidth:spec.width,path,arcs,length:arcs.at(-1),maxHeight:Math.max(...path.map(p=>p.y))}
   result.gates=Array.from({length:8},(_,i)=>({...atDistance(result,result.length*i/8),index:i}))
   result.repairs=[.36,.78].map((fraction,i)=>({...atDistance(result,result.length*fraction),id:`repair-${i}`}))
   cache.set(id,result);return result

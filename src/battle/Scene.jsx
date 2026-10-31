@@ -1,3 +1,4 @@
+import {initialChatter,pickChatter} from '../game/chatter.js'
 import React,{Suspense,useEffect,useLayoutEffect,useMemo,useRef} from 'react'
 import {Canvas,useFrame} from '@react-three/fiber'
 import {useGLTF} from '@react-three/drei'
@@ -14,7 +15,7 @@ const MODEL='https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN9xIl0G
 export function battleHud(state,viewerIndex=0){
   const p=state.actors[viewerIndex]||state.actors[0],warnings=state.hazards.filter(h=>h.fuse>=0&&Math.hypot(h.x-p.x,h.z-p.z)<13)
   return {tick:state.tick,seconds:state.tick/60,laps:state.laps,weather:state.weather.label,elevation:p.y||0,crashes:p.crashes||0,stuntScore:p.stuntScore||0,stuntCombo:p.stuntCombo||1,lap:Math.min(state.laps,p.lap),hp:p.hp,shield:p.shield,speed:p.speed,turbo:p.turbo||0,turboCount:p.turboCount||0,
-    respawn:p.respawn,bombCooldown:p.bombCooldown,mineCooldown:p.mineCooldown,rank:battleRanking(state).findIndex(a=>a.id===p.id)+1,
+    respawn:p.respawn,bombCooldown:p.bombCooldown,mineCooldown:p.mineCooldown,item:p.item||null,rank:battleRanking(state).findIndex(a=>a.id===p.id)+1,
     damageTaken:p.damageTaken,knockouts:p.knockouts,totalBlasts:state.totalBlasts,warning:warnings.length?Math.min(...warnings.map(h=>h.fuse)):null,
     actors:state.actors.map(a=>({id:a.id,name:a.name,x:a.x,z:a.z,y:a.y,yaw:a.yaw,s:a.s,hp:a.hp,color:a.color,lap:Math.min(state.laps,a.lap),finished:a.finished})),
     powerups:state.powerups.filter(p=>p.cooldown<=0).length,notice:state.notice}
@@ -90,6 +91,16 @@ function HazardVisuals({stateRef,reduced}){
     for(let i=0;i<MAX_HAZARDS;i++){
       const h=state.hazards[i]
       if(!h||h.cooldown>0){set(bodies.current,i,0,0,0,0,0,0);set(lamps.current,i,0,0,0,0,0,0);set(halos.current,i,0,0,0,0,0,0);continue}
+      if(h.type==='rocket'){
+        set(bodies.current,i,h.x,h.y,h.z,.55,.55,.55,'#e8403a')
+        set(lamps.current,i,h.x,h.y+.38,h.z,.32,.18,.32,'#ffd37a')
+        set(halos.current,i,0,0,0,0,0,0);continue
+      }
+      if(h.type==='oil'){
+        set(bodies.current,i,h.x,(h.groundY||0)+.06,h.z,3.4,.03,3.4,'#1a1626')
+        set(lamps.current,i,0,0,0,0,0,0)
+        set(halos.current,i,h.x,(h.groundY||0)+.09,h.z,2.1,2.1,1,h.arm>0?'#75e3f7':'#8a5cff',-Math.PI/2);continue
+      }
       const mine=h.type==='mine',crate=h.type==='crate',width=crate?1.45:mine?1.45:.75,height=crate?1.25:mine?.18:.75
       const warning=h.fuse>=0,color=h.arm>0?'#6bd5ff':warning?'#ffbd53':crate?'#ef8748':'#ff5b55'
       set(bodies.current,i,h.x,h.y,h.z,width,height,width,crate?'#ae5b37':'#273b44')
@@ -119,6 +130,22 @@ function HazardVisuals({stateRef,reduced}){
     <instancedMesh ref={shock} args={[null,null,24]} frustumCulled={false}><ringGeometry args={[.90,1,24]}/><meshBasicMaterial transparent opacity={.45} depthWrite={false} side={THREE.DoubleSide}/></instancedMesh>
   </group>
 }
+// Rainbow ? boxes; a box the player took is hidden while it regrows.
+function ItemBoxes({engineRef}){
+  const ref=useRef(),scratch=useMemo(()=>({d:new THREE.Object3D(),c:new THREE.Color()}),[])
+  useFrame(({clock})=>{
+    const boxes=engineRef.current.state.itemBoxes||[],{d,c}=scratch,t=clock.elapsedTime
+    if(!ref.current)return
+    boxes.forEach((b,i)=>{
+      const shown=b.cooldown<=0
+      d.position.set(b.x,b.y+1.15+Math.sin(t*3+i)*.15,b.z);d.rotation.set(.62,t*1.6+i,.62)
+      d.scale.setScalar(shown?1.15:0);d.updateMatrix();ref.current.setMatrixAt(i,d.matrix)
+      ref.current.setColorAt(i,c.setHSL((t*.25+i*.13)%1,.85,.55))
+    })
+    ref.current.count=boxes.length;ref.current.instanceMatrix.needsUpdate=true;if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true
+  })
+  return <instancedMesh ref={ref} name="ARCADE_ITEM_BOXES" args={[null,null,32]} frustumCulled={false}><boxGeometry args={[1,1,1]}/><meshStandardMaterial roughness={.35} metalness={.15} emissive="#3a2a55" emissiveIntensity={.6} transparent opacity={.92}/></instancedMesh>
+}
 function TurboPickups({engineRef}){
   const refs=useRef([])
   useFrame(({clock})=>{
@@ -130,7 +157,7 @@ function TurboPickups({engineRef}){
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.84,0]}><ringGeometry args={[1.05,1.25,24]}/><meshBasicMaterial color="#f6ff79" side={THREE.DoubleSide} transparent opacity={.8}/></mesh>
   </group>)}</group>
 }
-function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish,multiplayerRef,viewerIndex=0}){
+function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,onReady,onHud,onFinish,onChat,multiplayerRef,viewerIndex=0}){
   const {scene}=useGLTF(MODEL)
   const models=useMemo(()=>engineRef.current.state.actors.map(a=>{
     const source=scene.getObjectByName('PREFAB_kart_emerald');if(!source)throw new Error('Kart asset missing')
@@ -144,16 +171,31 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
   const temp=useMemo(()=>({desired:new THREE.Vector3(),target:new THREE.Vector3(),sky:new THREE.Color(),cloud:new THREE.Color('#7b8c9d')}),[])
   useEffect(()=>{onReady(true);return()=>models.forEach(m=>m.resources.dispose())},[models,onReady])
   useLayoutEffect(()=>{if(phase==='paused')onHud(battleHud(engineRef.current.state,viewerIndex))},[phase,onHud,engineRef])
-  useFrame(({camera,scene},rawDt)=>{
+  useFrame(({camera,scene,size},rawDt)=>{
     const engine=engineRef.current,dt=Math.min(.25,Math.max(0,rawDt))
+    const chatBumps=[]
     if(phase==='racing'&&!engine.state.done&&viewerIndex!==1){
       engine.acc+=dt
       while(engine.acc>=BATTLE_STEP&&!engine.state.done){
         engine.state=stepBattle(engine.state,inputRef.current,multiplayerRef?.current?.connected&&multiplayerRef.current.role==='host'?multiplayerRef.current.remoteInput:null);engine.acc-=BATTLE_STEP
         if(engine.replay)recordRaceReplay(engine.replay,engine.state)
-        inputRef.current.bomb=false;inputRef.current.mine=false
-        const event=engine.state.events.find(e=>e.actor==='player'&&['crash','damage','knockout','repair','lap','finished','stunt-smash','stunt-land','stunt-launch','turbo-pickup','turbo-bonus'].includes(e.kind))||engine.state.events.find(e=>e.actor==='player'&&e.kind==='deploy')
+        inputRef.current.bomb=false;inputRef.current.mine=false;inputRef.current.item=false
+        for(const e of engine.state.events)if(e.kind==='crash'&&(e.actor==='player'||e.other==='player'))chatBumps.push(e.actor==='player'?e.other:e.actor)
+        const event=engine.state.events.find(e=>e.actor==='player'&&['crash','damage','knockout','repair','lap','finished','stunt-smash','stunt-land','stunt-launch','turbo-pickup','turbo-bonus','item-pickup','item-turbo','item-shield','rocket-launch','oil-dropped','oil-spin'].includes(e.kind))||engine.state.events.find(e=>e.actor==='player'&&e.kind==='deploy')
         if(event)engine.state.notice={...event,until:engine.state.tick+110}
+      }
+    }
+    // Rival chatter: AI drivers taunt on close passes and complain when bumped.
+    if(phase==='racing'&&onChat){
+      const chat=engine.chat||(engine.chat={state:initialChatter(),scan:0})
+      chat.scan-=dt
+      if(chatBumps.length||chat.scan<=0){
+        chat.scan=.3
+        const me=engine.state.actors[viewerIndex]||engine.state.actors[0]
+        const near=engine.state.actors.filter(a=>a.id!==me.id&&a.hp>0).map(a=>({id:a.id,distance:Math.hypot(a.x-me.x,a.z-me.z,(a.y||0)-(me.y||0))}))
+        const picked=pickChatter(chat.state,engine.state.tick/60,{bumps:chatBumps,near})
+        chat.state=picked.state
+        if(picked.line)onChat(picked.line)
       }
     }
     const connection=multiplayerRef?.current
@@ -169,10 +211,15 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
       const fill=fills.current[i];if(fill){const ratio=Math.max(.001,a.hp/100);fill.scale.x=ratio;fill.position.x=-(1-ratio)*.85;fill.material.color.set(a.shield>0?'#65d9ff':a.hp>40?'#b8ec73':'#ff8275')}
       if(shields.current[i]){shields.current[i].visible=a.shield>0&&a.hp>0;shields.current[i].position.set(a.x,(a.y||0)+.08,a.z)}
     })
-    temp.target.set(player.x,(player.y||0)+1.3,player.z)
+    // A portrait phone is narrow: pull the chase camera back and up, widen the view and
+    // aim ahead of the kart so the road in front stays visible above the controls.
+    const portrait=size.height>size.width,fov=portrait?70:56
+    if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix()}
+    const lead=portrait&&cameraMode!=='aerial'?7:0
+    temp.target.set(player.x-Math.sin(player.yaw)*lead,(player.y||0)+1.3,player.z-Math.cos(player.yaw)*lead)
     if(phase==='lobby'){temp.desired.set(100,95,110);temp.target.set(0,1,0)}
     else if(cameraMode==='aerial')temp.desired.set(player.x,(player.y||0)+48,player.z+5)
-    else {const d=9.5+Math.abs(player.speed)*.06;temp.desired.set(player.x+Math.sin(player.yaw)*d,(player.y||0)+6,player.z+Math.cos(player.yaw)*d)}
+    else {const d=(portrait?13:9.5)+Math.abs(player.speed)*.06;temp.desired.set(player.x+Math.sin(player.yaw)*d,(player.y||0)+(portrait?8.5:6),player.z+Math.cos(player.yaw)*d)}
     if(engine.snap){camera.position.copy(temp.desired);engine.snap=false}else camera.position.lerp(temp.desired,1-Math.exp(-7*dt))
     camera.up.set(0,1,0);camera.lookAt(temp.target)
     hudTime.current+=dt
@@ -183,6 +230,7 @@ function LoadedRace({engineRef,inputRef,phase,track,budget,cameraMode,reduced,on
     <RaceTrack track={track}/>
     <LevelScenery track={track} budget={budget}/>
     <TurboPickups engineRef={engineRef}/>
+    <ItemBoxes engineRef={engineRef}/>
     {models.map((m,i)=><group key={i}>
       <group ref={n=>{roots.current[i]=n}}><primitive object={m.model} dispose={null}/></group>
       <group ref={n=>{bars.current[i]=n}}><mesh><planeGeometry args={[1.85,.23]}/><meshBasicMaterial color="#193038"/></mesh><mesh ref={n=>{fills.current[i]=n}} position={[0,0,.01]}><planeGeometry args={[1.7,.13]}/><meshBasicMaterial color="#cafa6a"/></mesh></group>

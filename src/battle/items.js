@@ -4,25 +4,19 @@
  */
 import {LANE_OFFSETS,trackPoint} from '../game/track.js'
 // rules.js imports this module too; its helpers are only called at step time, not at load.
-import {segmentGap,safeTrackPoint} from './rules.js'
+import {segmentGap,safeTrackPoint,BATTLE_LIMITS} from './rules.js'
 
-export const ITEM_KINDS=Object.freeze(['turbo','shield','rocket','oil'])
-export const ITEM_LABELS=Object.freeze({turbo:'TURBO',shield:'SHIELD',rocket:'ROCKET',oil:'OIL SLICK'})
+export {ITEM_KINDS,ITEM_LABELS,rollItem} from './itemKinds.js'
+import {rollItem} from './itemKinds.js'
 export const ITEM_RULES=Object.freeze({
  boxRespawn:6,turbo:2.4,shield:6,rocketSpeed:38,rocketLife:3.2,rocketRange:70,
- oilLife:15,oilRadius:2.1,oilStun:1.1,botTurbo:2.5,aiHold:5,
+ oilLife:15,oilRadius:2.1,oilStun:1.1,botTurbo:2.5,aiHold:5,aiGrace:8,
 })
-// A row of four boxes spans the road at each of three points on the lap.
-const ROWS=[18,66,112]
-export const ITEM_BOXES=Object.freeze(ROWS.flatMap(index=>LANE_OFFSETS.map((lane,i)=>({id:`item-${index}-${i}`,...trackPoint(index,lane)}))))
-
-// Deterministic per pickup, so races replay identically and tests are stable.
-export function rollItem(seed){
- let x=Math.imul(seed|0,2654435761)>>>0
- x=Math.imul(x^(x>>>15),2246822519)>>>0
- x=(x^(x>>>13))>>>0
- return ITEM_KINDS[x%ITEM_KINDS.length]
-}
+// A row of four boxes spans the road at four points on the lap. Index 135 sits 11 m past
+// the finish line, so the first power-up comes within seconds of the start; even
+// a no-steering launch off the grid drives through one.
+export const ITEM_BOX_ROWS=Object.freeze([18,66,112,135])
+export const ITEM_BOXES=Object.freeze(ITEM_BOX_ROWS.flatMap(index=>LANE_OFFSETS.map((lane,i)=>({id:`item-${index}-${i}`,...trackPoint(index,lane)}))))
 
 export function initialItems(){
  return {item:null,lastItem:0,itemBoxes:ITEM_BOXES.map(b=>({...b,cooldown:0})),botItems:{},itemRolls:0,turboUses:0,rocketsFired:0}
@@ -59,6 +53,9 @@ function dropOil(s,actor){
 
 /** Use the held item. Returns events; mutates the step's working copies only. */
 export function useItem(s,actor,kind,targets,isPlayer){
+ // Rockets and oil share the dynamic hazard pool with bombs and mines; when it is full,
+ // the item becomes a turbo rather than overflowing the pool.
+ if((kind==='rocket'||kind==='oil')&&s.hazards.filter(h=>!h.fixed).length>=BATTLE_LIMITS.dynamic)kind='turbo'
  if(kind==='turbo'){
   if(isPlayer){actor.boostTimer=Math.max(actor.boostTimer||0,ITEM_RULES.turbo);actor.speed=Math.max(actor.speed,26);s.turboUses++}
   else actor.turbo=ITEM_RULES.botTurbo
@@ -103,13 +100,17 @@ export function stepItems(s,p,before,ns,oldBots,step,token,recovering,detonate,a
    if(s.botItems[n.id])continue
    const old=oldBots.find(o=>o.id===n.id)||n
    if(Math.hypot(n.x-old.x,n.z-old.z)>8||segmentGap(old,n,box)>1.9)continue
-   s.botItems[n.id]={kind:rollItem(++s.itemRolls*31+s.serial),since:s.time};box.cooldown=ITEM_RULES.boxRespawn;break
+   // A rival's pickup leaves the box in place for the player, so the kart ahead in your
+   // lane never empties it before you arrive.
+   s.botItems[n.id]={kind:rollItem(++s.itemRolls*31+s.serial),since:s.time};break
   }
  }
  // Rival AI: buffs at once; rockets when you are ahead in range; oil when you are close behind.
  for(const n of racers){
   const held=s.botItems[n.id];if(!ai||!held||n.stun>0)continue
   const ahead=aheadOf(n,p),distance=Math.hypot(p.x-n.x,p.z-n.z),waited=s.time-held.since
+  // The grid is bunched at the start: no rival rockets or oil until the field spreads out.
+  if((held.kind==='rocket'||held.kind==='oil')&&s.time<ITEM_RULES.aiGrace)continue
   const fire=held.kind==='turbo'||held.kind==='shield'
    ||(held.kind==='rocket'&&!recovering&&ahead>2&&distance<45)
    ||(held.kind==='oil'&&ahead<-2&&distance<22)

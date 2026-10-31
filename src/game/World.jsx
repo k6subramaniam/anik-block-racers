@@ -9,6 +9,7 @@ import { advanceKart, initialRaceState, SPAWN, MAX_SPEED } from './simulation.js
 import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } from './openWorld.js'
 import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
 import {makeNpcs, advanceNpcs, applyRamming} from './npcAI.js'
+import {initialChatter,pickChatter} from './chatter.js'
 import NpcActors from './NpcActors.jsx'
 import VoxelVillagers from './VoxelVillagers.jsx'
 import {makeVillagers,advanceVillagers,nearbyVillager,talkToVillager} from './villagerAI.js'
@@ -27,7 +28,7 @@ const MODEL_URL = 'https://d2ol7oe51mr4n9.cloudfront.net/user_38xFRdnQaeZpG4RsfN
 const walls = trackBarriers()
 const boostLocations = BOOST_PADS
 const coinLocations = COINS
-// The Higgsfield scene's original two-lane road kit; RaceCircuit draws the four-lane circuit instead.
+// The Higgsfield scene's original two-lane road kit; RaceCircuit draws the six-lane circuit instead.
 const OLD_RACE_KIT = ['TRACK_','PREFAB_coin_','PREFAB_boost_pad_','PREFAB_checkpoint_gate_','PROP_start_','PROP_ANIK_','TRIGGER_']
 
 function makeGameAssets(scene) {
@@ -93,6 +94,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
   const cameraTarget = useRef(new THREE.Vector3(SPAWN.x,1.1,SPAWN.z))
   const lastCollisionToast = useRef(-5)
   const lastCoinTick = useRef(new Map())
+  const chatter = useRef({state:initialChatter(),clock:0,scan:0})
   const nextCull = useRef(0)
   const lastWeather = useRef('clear')
   const { camera } = useThree()
@@ -124,6 +126,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     villagerRef.current=makeVillagers()
     elapsedHudRefresh.current = 0
     lastCoinTick.current = new Map()
+    chatter.current = {state:initialChatter(),clock:0,scan:0}
     cameraTarget.current.set(fresh.x,1.1,fresh.z)
     nextCull.current=0
     lastWeather.current=weatherClockRef.current.kind
@@ -174,6 +177,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     const battling=battleStore.enabled&&mode==='race'
     battleEnabledRef.current=battling
     let frameEvent=null
+    const chatBumps=[]
     if(phase === 'racing' || phase==='exploring'){
       let remaining=frameDt
       while(remaining>0.00001){
@@ -191,6 +195,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
         if(mode==='explore')villagerRef.current=advanceVillagers(villagerRef.current,dt,next)
         const impact=(wasRecovering||next.event==='finished')?{player:next,npcs:moving,event:null}:applyRamming(next,moving,dt)
         npcRef.current=impact.npcs
+        if(impact.event?.npcKind==='racer')chatBumps.push(impact.event.npcId)
         if(impact.event){
           next={...impact.player,event:impact.event.kind,npcName:impact.event.npcName,
             npcKind:impact.event.npcKind,hitDamage:impact.event.damage,
@@ -236,6 +241,16 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
       }
       race.current=next
       if(frameEvent) onEvent(frameEvent,next)
+      // Rival chatter: bumps speak at once; close passes are checked a few times a second.
+      const chat=chatter.current
+      chat.clock+=frameDt;chat.scan-=frameDt
+      if(chatBumps.length||chat.scan<=0){
+        chat.scan=.3
+        const near=npcRef.current.filter(n=>n.kind==='racer'&&n.health>0&&!(n.respawn>0)).map(n=>({id:n.id,distance:Math.hypot(n.x-next.x,n.z-next.z)}))
+        const picked=pickChatter(chat.state,chat.clock,{bumps:chatBumps,near})
+        chat.state=picked.state
+        if(picked.line)onEvent('rival-chat',{...next,chat:picked.line})
+      }
       if(weatherClockRef.current.kind!==lastWeather.current){
         lastWeather.current=weatherClockRef.current.kind
         onEvent('weather-change',{...next,weatherLabel:weatherClockRef.current.label})

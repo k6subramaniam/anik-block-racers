@@ -1,15 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TRACK, ROAD_WIDTH, LANES, LANE_WIDTH, LANE_OFFSETS, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, FINISH_INDEX, START_INDEX, BOOST_PADS, gateAt, COINS, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
+import { TRACK, ROAD_WIDTH, LANES, LANE_WIDTH, LANE_OFFSETS, GRID_LANES, CHECKPOINT_1, CHECKPOINT_2, FINISH_GATE, FINISH_INDEX, START_INDEX, BOOST_PADS, gateAt, COINS, crossedGate, nearestRoad, stepRace, trackBarriers } from '../game/track.js'
 import { initialRaceState, moveKart, advanceKart, SPAWN, MAX_SPEED, SAFE_ROAD_HALF_WIDTH, formatTime, nearestObstacle } from '../game/simulation.js'
 
 function before(g, distance=.55){return {x:g.x-g.tx*distance,z:g.z-g.tz*distance}}
 function after(g, distance=.55){return {x:g.x+g.tx*distance,z:g.z+g.tz*distance}}
 
-test('Grand Circuit is a 156-sample closed loop of four 3.6m lanes',()=>{
+test('Grand Circuit is a 156-sample closed loop of six 3.6m lanes',()=>{
   assert.equal(TRACK.length,156)
-  assert.equal(LANES,4);assert.equal(LANE_WIDTH,3.6);assert.ok(Math.abs(ROAD_WIDTH-14.4)<1e-9)
-  assert.deepEqual(LANE_OFFSETS.map(x=>+x.toFixed(2)),[-5.4,-1.8,1.8,5.4])
+  assert.equal(LANES,6);assert.equal(LANE_WIDTH,3.6);assert.ok(Math.abs(ROAD_WIDTH-21.6)<1e-9)
+  assert.deepEqual(LANE_OFFSETS.map(x=>+x.toFixed(2)),[-9,-5.4,-1.8,1.8,5.4,9])
+  assert.deepEqual(GRID_LANES.map(x=>+x.toFixed(2)),[-5.4,-1.8,1.8,5.4],'the grid uses the four middle lanes')
   const distances=TRACK.map((p,i)=>Math.hypot(p.x-TRACK[(i+1)%TRACK.length].x,p.z-TRACK[(i+1)%TRACK.length].z))
   assert.ok(Math.max(...distances)<2.8,'No gap between samples')
   const lap=distances.reduce((a,b)=>a+b,0)
@@ -29,7 +30,7 @@ test('circuit keeps clear of the castle, village and lagoon and never overlaps i
 })
 test('player starts in the back row, right-hand lane, behind the finish line',()=>{
   const road=nearestRoad(SPAWN)
-  assert.ok(Math.abs(road.distance-LANE_OFFSETS[3])<.2)
+  assert.ok(Math.abs(road.distance-GRID_LANES[3])<.2)
   assert.ok(FINISH_INDEX-START_INDEX>=6&&FINISH_INDEX-START_INDEX<=10)
   const ahead=(FINISH_GATE.x-SPAWN.x)*FINISH_GATE.tx+(FINISH_GATE.z-SPAWN.z)*FINISH_GATE.tz
   assert.ok(ahead>12&&ahead<24,'finish line is ahead of the grid')
@@ -110,4 +111,18 @@ test('barriers form a closed collision system with both road sides',()=>{
 test('timer formatting includes hundredths',()=>{
   assert.equal(formatTime(79.156),'01:19.15')
   assert.equal(formatTime(null),'--:--.--')
+})
+test('hitting a wall glances the kart along it instead of bouncing it backwards',()=>{
+ // Drive straight across the road from the grid: the right-hand wall is a few metres away.
+ let s={...initialRaceState(),speed:18,yaw:initialRaceState().yaw-Math.PI/2},hit=null
+ for(let i=0;i<120&&!hit;i++){s=moveKart(s,{forward:true},1/60);if(s.event==='wall')hit=s}
+ assert.ok(hit,'reached the wall')
+ assert.ok(hit.speed>8,'keeps most of its momentum (no reverse bounce)')
+ const road=nearestRoad(hit),a=TRACK[road.index],b=TRACK[(road.index+1)%TRACK.length],len=Math.hypot(b.x-a.x,b.z-a.z)
+ const along=Math.abs(-Math.sin(hit.yaw)*(b.x-a.x)/len-Math.cos(hit.yaw)*(b.z-a.z)/len)
+ assert.ok(along>.85,'now heading mostly along the wall')
+ // Keep the throttle on: the kart drives away instead of grinding the barrier.
+ let walls=0
+ for(let i=0;i<120;i++){s=moveKart(s,{forward:true},1/60);if(s.event==='wall')walls++}
+ assert.ok(walls<12,`only ${walls} further wall frames`);assert.ok(s.speed>12)
 })

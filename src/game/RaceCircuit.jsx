@@ -3,7 +3,7 @@ import {useFrame} from '@react-three/fiber'
 import * as THREE from 'three'
 import {TRACK, ROAD_WIDTH, LANE_OFFSETS, trackPoint, FINISH_INDEX, CHECKPOINT_1_INDEX, CHECKPOINT_2_INDEX, BOOST_PADS, COINS} from './track.js'
 
-/** The four-lane Voxel Valley Grand Circuit, built from the track samples so the
+/** The six-lane Voxel Valley Grand Circuit, built from the track samples so the
  * visible road, lane markings, gates and pickups always match the race rules.
  * Everything is merged or instanced to keep draw calls low on Galaxy phones.
  */

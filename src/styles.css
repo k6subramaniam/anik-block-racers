@@ -355,3 +355,9 @@ button{touch-action:manipulation;cursor:pointer}
 @media(max-width:650px){.now-playing{top:62px;padding:7px 12px}.now-playing strong{font-size:16px}.radio-options button{min-height:42px;font-size:10px}}
 /* Landscape phones: the top centre holds the timer and weather, so show the card between the pedals. */
 @media(max-height:450px) and (orientation:landscape){.now-playing{top:auto;bottom:24px;padding:7px 12px}.now-playing strong{font-size:16px}}
+/* Rival chatter: a speech bubble in the rival's colour while their voice line plays. */
+.rival-chat{position:absolute;z-index:19;left:50%;top:30%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 16px;border-radius:14px;background:rgba(10,23,23,.88);border:2px solid var(--rival);box-shadow:0 0 18px color-mix(in srgb,var(--rival) 40%,transparent);pointer-events:none;animation:rival-chat-in .2s ease-out;max-width:min(80vw,420px);text-align:center}
+.rival-chat b{font:900 12px 'DM Sans',sans-serif;letter-spacing:1.6px;color:var(--rival)}
+.rival-chat span{font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.4px;color:#f4fbea}
+@keyframes rival-chat-in{from{opacity:0;transform:translate(-50%,6px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@media(max-height:450px) and (orientation:landscape){.rival-chat{top:24%;padding:5px 12px}.rival-chat span{font-size:14px}}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Camera, Check, CircleHelp, Clock3, Coins, Flag, Gauge, Pause, Play, RotateCcw, Shield, Trophy, X, Settings2, Smartphone, Maximize2, Download, Vibrate, GaugeCircle, Map as MapIcon, Compass, Navigation, Bot, MessageCircle, CloudRain, CloudSnow, Wind, Sun as SunIcon, Moon, Waves, Volume2, VolumeX, Music, Music2, Speaker, Radio } from 'lucide-react'
+import { Activity, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Camera, Check, CircleHelp, Clock3, Coins, Flag, Gauge, Pause, Play, RotateCcw, Shield, Trophy, X, Home, Settings2, Smartphone, Maximize2, Download, Vibrate, GaugeCircle, Map as MapIcon, Compass, Navigation, Bot, MessageCircle, CloudRain, CloudSnow, Wind, Sun as SunIcon, Moon, Waves, Volume2, VolumeX, Music, Music2, Speaker, Radio } from 'lucide-react'
 import RacingScene from './game/World.jsx'
 import {BattleProvider,BattleHud,BattleChoice} from './battle/BattleUI.jsx'
 import { formatTime, INPUT_DEFAULT } from './game/simulation.js'
@@ -11,6 +11,9 @@ import { createAnnouncer, announcerClipFor, COUNTDOWN_CLIPS } from './game/annou
 import { createSoundEngine, sfxFor, RADIO_STATIONS, stationById, nextStation } from './game/sound.js'
 import { createChatter } from './game/chatter.js'
 import { RIVALS } from './game/npcAI.js'
+import RaceMinimap from './game/RaceMinimap.jsx'
+import { DIFFICULTY, safeDifficulty, ordinal } from './game/standings.js'
+import { loadBest, recordResult } from './game/records.js'
 import { createHeldInput, getRenderBudget, isCoarsePointer, safeStoredQuality, QUALITY_OPTIONS } from './game/mobile.js'
 
 const phrases={
@@ -19,7 +22,6 @@ const phrases={
   lap:{heading:'LAP COMPLETE!',small:'Keep the momentum',color:'orange'},
   boost:{heading:'TURBO BOOST!',small:'Full throttle',color:'lime'},
   coin:{heading:'+10 POINTS',small:'Block coin collected',color:'orange'},
-  wall:{heading:'WALL HIT',small:'Steer back into the racing line',color:'orange'},
   obstacle:{heading:'OBSTACLE!',small:'Find a better line',color:'orange'},
   border:{heading:'WORLD EDGE',small:'Turn around and keep exploring',color:'orange'},
   discovery:{heading:'AREA DISCOVERED',small:'New district on your map',color:'lime'},
@@ -88,20 +90,48 @@ function Speedometer({speed,boost}){
     <div className="speed-content"><Gauge size={15} strokeWidth={2.5}/><span className="speed-numeral">{kmh}</span><span className="speed-label">KM / H</span></div>
   </div>
 }
-function IntroCard({loaded,onStart,onExplore,mobile,onInstall,canInstall}){
+function RaceBoard({hud}){
+  const pos=hud.position,field=hud.fieldSize||RIVALS.length+1
+  return <div className="gp-board" data-testid="race-board">
+    <div className={`gp-pos ${pos===1?'leader':''}`} data-testid="race-position"><small>POS</small><strong>{pos||'–'}</strong><span>/{field}</span></div>
+    <div className="gp-cell"><small><Flag size={11}/> LAP</small><strong>{hud.lap}<span>/{LAPS_TO_WIN}</span></strong><div className="gp-bar"><i style={{width:`${Math.min(100,((hud.lap-1+hud.checkpoint/3)/LAPS_TO_WIN)*100)}%`}}/></div></div>
+    <div className="gp-cell gp-time"><small><Clock3 size={11}/> TIME</small><strong data-testid="race-time">{formatTime(hud.elapsed)}</strong><em>BEST {formatTime(hud.bestLap)}</em></div>
+    <div className="gp-chips"><span><Shield size={11}/> CP {hud.checkpoint}/2</span><span><Coins size={11}/> {hud.coins||0}</span></div>
+  </div>
+}
+function DifficultyPicker({value,onChange}){
+  return <div className="gp-difficulty" role="radiogroup" aria-label="Rival difficulty">{Object.values(DIFFICULTY).map(d=>
+    <button key={d.id} type="button" role="radio" aria-checked={value===d.id} data-testid={`difficulty-${d.id}`} className={value===d.id?'selected':''} onClick={()=>onChange(d.id)}><b>{d.label}</b><small>{d.note}</small></button>)}</div>
+}
+function IntroCard({loaded,onStart,onExplore,mobile,onInstall,canInstall,difficulty,onDifficulty,best,onHome}){
   return <div className="dialog-backdrop intro-backdrop"><div className="intro-panel">
-    <div className="card-eyebrow"><span className="green-dot"/> ANIK VOXEL WORLD · BIGGER WORLD v3.1</div>
+    {onHome&&<button className="home-button intro-home" onClick={onHome} data-testid="intro-home"><ArrowLeft size={16}/><span>ALL MODES</span></button>}
+    <div className="card-eyebrow"><span className="green-dot"/> GRAND PRIX · VOXEL VALLEY</div>
     <div className="intro-heading"><span>RACE THE</span><strong>BLOCKS.</strong></div>
-    <p className="intro-copy">Race through pixel-textured landscapes or explore ten districts across a 906 × 756 metre world with cubic forests, walking villagers, lakes, creatures, and hidden relics!</p>
-    {mobile&&<div className="mobile-intro-tip"><Smartphone size={18}/><div><strong>BUILT FOR SAMSUNG GALAXY</strong><span>Rotate to landscape · Hold the glowing pedal to race</span></div></div>}
-    <div className="map-details"><div><span>TRACK 01</span><strong>VOXEL VALLEY</strong></div><div><span>RACE TYPE</span><strong>{RIVALS.length} AI OPPONENTS</strong></div><div><span>DISTANCE</span><strong>3 LAPS</strong></div></div>
-    <BattleChoice/><div className="intro-actions"><button className="primary-button" onClick={onExplore} disabled={!loaded} data-testid="start-explore"><Compass size={17}/>{loaded?'EXPLORE OPEN WORLD':'LOADING THE WORLD'}<span>↗</span></button>
-      <button className="secondary-button intro-race-button" onClick={onStart} disabled={!loaded} data-testid="start-race"><Flag size={16}/> RACE 3 LAPS</button></div>
-    <p className="intro-hint">{loaded?(mobile?'FULLSCREEN LANDSCAPE RECOMMENDED':'PRESS ENTER TO START'):'Loading the expanded voxel world and racing physics…'}</p>
+    <p className="intro-copy">Three laps against {RIVALS.length} rivals on a six-lane circuit. Grab ? boxes for turbo, shields, rockets and oil, and finish on the podium.</p>
+    <div className="map-details"><div><span>FIELD</span><strong>{RIVALS.length+1} KARTS</strong></div><div><span>DISTANCE</span><strong>{LAPS_TO_WIN} LAPS</strong></div><div><span>YOUR BEST</span><strong data-testid="gp-best">{best?`${ordinal(best.position)} · ${formatTime(best.time)}`:'—'}</strong></div></div>
+    <DifficultyPicker value={difficulty} onChange={onDifficulty}/>
+    <BattleChoice/>
+    <div className="intro-actions"><button className="primary-button" onClick={onStart} disabled={!loaded} data-testid="start-race"><Flag size={17}/>{loaded?`RACE ${LAPS_TO_WIN} LAPS`:'LOADING THE WORLD'}<span>↗</span></button>
+      <button className="secondary-button intro-race-button" onClick={onExplore} disabled={!loaded} data-testid="start-explore"><Compass size={16}/> EXPLORE OPEN WORLD</button></div>
+    <p className="intro-hint">{loaded?(mobile?'TIP · LANDSCAPE GIVES THE WIDEST VIEW':'PRESS ENTER TO START'):'Loading the voxel world and racing physics…'}</p>
     {mobile&&<button className="install-secondary" onClick={onInstall}><Download size={16}/>{canInstall?'INSTALL GAME ON PHONE':'HOW TO INSTALL ON GALAXY'}</button>}
   </div><div className="intro-lower"><div className="keys-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>DRIVE</span><span className="hint-divider"/><kbd>SPACE</kbd><span>DRIFT</span><span className="hint-divider"/><kbd>C</kbd><span>CAMERA</span></div></div></div>
 }
-function CenterDialog({type,elapsed,bestLap,coins,onContinue,onRestart,onExplore,mode}){
+function RaceResults({results,elapsed,bestLap,coins,record,onRestart,onExplore,onHome}){
+  const me=results?.findIndex(r=>r.player)??-1,place=me+1
+  const title=place===1?<>YOU <em>WON!</em></>:place>0&&place<=3?<>{ordinal(place)} <em>PLACE.</em></>:place>0?<>{ordinal(place)} <em>PLACE</em></>:<>RACE <em>COMPLETE.</em></>
+  return <div className="dialog-backdrop"><div className="final-panel gp-results" data-testid="race-results" data-position={place}>
+    <div className={`result-medal ${place>0&&place<=3?`podium-${place}`:''}`}><Trophy size={32}/></div>
+    <div className="card-eyebrow">VOXEL VALLEY GRAND PRIX · FINAL STANDINGS</div>
+    <h1>{title}</h1>
+    {record&&<p className="gp-record" data-testid="gp-record">{record}</p>}
+    {results&&<ol className="gp-standings">{results.map((r,i)=><li key={r.id} className={r.player?'me':''}><span className="gp-place">{i+1}</span><i style={{background:r.color}}/><b>{r.name}</b><span className="gp-gap">{i===0?formatTime(r.time):`+${(r.time-results[0].time).toFixed(2)}s`}</span></li>)}</ol>}
+    <div className="finish-grid"><div><small>RACE TIME</small><strong>{formatTime(elapsed)}</strong></div><div><small>BEST LAP</small><strong>{formatTime(bestLap)}</strong></div><div><small>COINS</small><strong>{coins}</strong></div></div>
+    <div className="finish-actions"><button className="primary-button" onClick={onRestart} data-testid="race-again"><RotateCcw size={17}/> RACE AGAIN</button><button className="secondary-button" onClick={onExplore}><Compass size={17}/> EXPLORE</button>{onHome&&<button className="secondary-button" onClick={onHome}><Home size={17}/> HOME</button>}</div>
+  </div></div>
+}
+function CenterDialog({type,elapsed,bestLap,coins,onContinue,onRestart,onExplore,mode,onHome}){
   const finished=type==='finished'
   return <div className="dialog-backdrop"><div className="final-panel">
     <div className="result-medal">{finished?<Trophy size={32}/>:<Pause size={30}/>}</div>
@@ -109,7 +139,7 @@ function CenterDialog({type,elapsed,bestLap,coins,onContinue,onRestart,onExplore
     <h1>{finished?<>VOXEL VALLEY <em>CONQUERED.</em></>:<>TAKE A <em>BREATHER.</em></>}</h1>
     <p>{finished?'You cleared every checkpoint and completed all three laps. Your time is on the board.':mode==='explore'?'Your explorer is parked. Resume discovering the world whenever you are ready.':'The timer is frozen. Return to the race whenever you are ready.'}</p>
     <div className="finish-grid"><div><small>RACE TIME</small><strong>{formatTime(elapsed)}</strong></div><div><small>BEST LAP</small><strong>{formatTime(bestLap)}</strong></div><div><small>COINS</small><strong>{coins}</strong></div></div>
-    <div className="finish-actions">{!finished&&<button className="primary-button" onClick={onContinue}><Play fill="currentColor" size={17}/> {mode==='explore'?'RESUME EXPLORING':'RESUME RACE'}</button>}<button className={finished?'primary-button':'secondary-button'} onClick={onRestart}><RotateCcw size={17}/> {mode==='explore'?'RESTART EXPLORATION':'RACE AGAIN'}</button>{finished&&<button className="secondary-button" onClick={onExplore}><Compass size={17}/> EXPLORE WORLD</button>}</div>
+    <div className="finish-actions">{!finished&&<button className="primary-button" onClick={onContinue}><Play fill="currentColor" size={17}/> {mode==='explore'?'RESUME EXPLORING':'RESUME RACE'}</button>}<button className={finished?'primary-button':'secondary-button'} onClick={onRestart}><RotateCcw size={17}/> {mode==='explore'?'RESTART EXPLORATION':'RACE AGAIN'}</button>{finished&&<button className="secondary-button" onClick={onExplore}><Compass size={17}/> EXPLORE WORLD</button>}{!finished&&onHome&&<button className="secondary-button" onClick={onHome} data-testid="pause-home"><Home size={17}/> HOME</button>}</div>
   </div></div>
 }
 function WorldMapPanel({hud,onClose,onTravel}){
@@ -132,7 +162,7 @@ function WorldMapPanel({hud,onClose,onTravel}){
     </div></div><footer className="map-footer"><span>{(hud.visited||[]).length} / {ZONES.length} AREAS DISCOVERED · {(hud.collected||[]).length} / {RELICS.length} RELICS FOUND</span><button onClick={onClose}>CLOSE MAP</button></footer>
   </section></div>
 }
-function WorldApp(){
+function WorldApp({onHome}){
   const inputRef=useRef({...INPUT_DEFAULT})
   const [loaded,setLoaded]=useState(false),[phase,setPhase]=useState('ready'),[mode,setMode]=useState('race')
   const [showMap,setShowMap]=useState(false),[warpRequest,setWarpRequest]=useState(null),[talkRequest,setTalkRequest]=useState(0)
@@ -141,6 +171,9 @@ function WorldApp(){
   const [showHow,setShowHow]=useState(false),[showSettings,setShowSettings]=useState(false),[showInstallHelp,setShowInstallHelp]=useState(false)
   const [installPrompt,setInstallPrompt]=useState(null),[standalone,setStandalone]=useState(false)
   const mobile=isCoarsePointer()
+  const [difficulty,setDifficulty]=useState(()=>{try{return safeDifficulty(localStorage.getItem('anik-difficulty'))}catch{return 'normal'}})
+  const [best,setBest]=useState(loadBest)
+  const [record,setRecord]=useState(null)
   const [quality,setQuality]=useState(()=>{try{return safeStoredQuality(localStorage.getItem('anik-quality'))}catch{return 'auto'}})
   const [haptics,setHaptics]=useState(()=>{try{return localStorage.getItem('anik-haptics')!=='off'}catch{return true}})
   const hapticsRef=useRef(haptics);hapticsRef.current=haptics
@@ -230,6 +263,15 @@ function WorldApp(){
   useKeyboard(inputRef,{start,restart,togglePause,toggleCamera,onBlur,openMap,startExplore,startRaceMode,talk,nextStation:cycleRadio})
   useEffect(()=>{if(!loaded||phase!=='ready')return;if(new URLSearchParams(window.location.search).get('source')==='shortcut-explore')startExplore()},[loaded,phase,startExplore])
   useEffect(()=>{try{localStorage.setItem('anik-quality',quality)}catch{}},[quality])
+  useEffect(()=>{try{localStorage.setItem('anik-difficulty',difficulty)}catch{}},[difficulty])
+  // Personal bests are saved once per finished race.
+  useEffect(()=>{
+    if(phase!=='finished'||mode!=='race'||!hud.results)return
+    const place=hud.results.findIndex(r=>r.player)+1
+    const saved=recordResult({position:place,time:hud.elapsed,bestLap:hud.bestLap,difficulty})
+    setBest(saved.best);setRecord(saved.message)
+  },[phase,mode,hud.results])
+  useEffect(()=>{if(phase!=='finished')setRecord(null)},[phase])
   useEffect(()=>{try{localStorage.setItem('anik-haptics',haptics?'on':'off')}catch{}},[haptics])
   useEffect(()=>{sound.current.setSfxEnabled(sfx);try{localStorage.setItem('anik-sfx',sfx?'on':'off')}catch{}},[sfx])
   useEffect(()=>{sound.current.setStation(station);try{localStorage.setItem('anik-radio',station)}catch{}},[station])
@@ -273,39 +315,49 @@ function WorldApp(){
     return()=>timers.forEach(window.clearTimeout)
   },[phase,resetToken])
   const isRacing=phase==='racing'||phase==='exploring',exploring=mode==='explore'
-  return <div className="app-shell">
-    <div className="world-layer"><WorldErrorBoundary><RacingScene onReady={setLoaded} phase={phase} mode={mode} warpRequest={warpRequest} inputRef={inputRef} setHud={setHud} hudCollected={hud.collected} resetToken={resetToken} talkRequest={talkRequest} weatherPreviewRequest={weatherPreviewRequest} quality={quality} budget={budget} cameraMode={cameraMode} onPhase={setPhase} onEvent={onWorldEvent}/></WorldErrorBoundary></div>
+  return <div className={`app-shell ${exploring?'mode-explore':'gp-race'}`}>
+    <div className="world-layer"><WorldErrorBoundary><RacingScene onReady={setLoaded} phase={phase} mode={mode} warpRequest={warpRequest} inputRef={inputRef} setHud={setHud} hudCollected={hud.collected} resetToken={resetToken} difficulty={difficulty} talkRequest={talkRequest} weatherPreviewRequest={weatherPreviewRequest} quality={quality} budget={budget} cameraMode={cameraMode} onPhase={setPhase} onEvent={onWorldEvent}/></WorldErrorBoundary></div>
     <div className="atmospheric-vignette"/>
     <header className="top-bar">
-      <div className="brand-block"><div className="brand-mark">A<span>▰</span></div><div className="brand-wordmark"><strong>ANIK<span> / </span>BLOCK RACERS</strong><small>BUILD THE SPEED.</small></div></div>
+      <div className="brand-block">{onHome?<button className="home-button" onClick={onHome} aria-label="Back to home" data-testid="back-home"><ArrowLeft size={18}/><span>HOME</span></button>:null}<div className="brand-mark">A<span>▰</span></div><div className="brand-wordmark"><strong>ANIK<span> / </span>BLOCK RACERS</strong><small>BUILD THE SPEED.</small></div></div>
       <div className="top-track-pill"><span className="pill-circle"/><div><span>{exploring?'FREE ROAM':'NOW RACING'}</span><strong>{exploring?hud.zoneName||'OPEN WORLD':'VOXEL VALLEY'}</strong></div><i>{exploring?'12 WALKING VILLAGERS':`${RIVALS.length} AI RIVALS`}</i></div>
       <div className="top-buttons"><button title="Open world map (M)" aria-label="Open world map" data-testid="open-map" onClick={openMap}><MapIcon size={19}/></button><button title={exploring?'Return to 3-lap race':'Explore open world'} aria-label={exploring?'Return to race':'Explore open world'} data-testid="switch-mode" onClick={exploring?startRaceMode:startExplore}>{exploring?<Flag size={19}/>:<Compass size={19}/>}</button><button title="How to play" aria-label="How to play" onClick={openHow}><CircleHelp size={19}/></button><button title="Galaxy graphics and controls" aria-label="Graphics and controls settings" data-testid="open-settings" onClick={openSettings}><Settings2 size={19}/></button><button title="Switch radio station (N)" aria-label="Switch radio station" data-testid="radio-next" onClick={cycleRadio}><Radio size={19}/></button><button title="Switch camera (C)" aria-label="Switch racing camera" onClick={toggleCamera}><Camera size={19}/></button><button title="Pause or resume (P)" aria-label="Pause or resume race" disabled={phase==='ready'||phase==='finished'} onClick={togglePause}>{phase==='paused'?<Play size={19}/>:<Pause size={19}/>}</button></div>
     </header>
-    <main data-testid="world-hud" data-world-x={hud.x} data-world-z={hud.z} className="hud" aria-live="off">
+    <main data-testid="world-hud" data-position={hud.position||""} data-world-x={hud.x} data-world-z={hud.z} className="hud" aria-live="off">
       <div className={`weather-hud ${hud.daylight<.25?'night':''}`} data-testid="weather-status" aria-label={`Game clock ${hud.worldTime||'08:00'}, weather ${hud.weather||'CLEAR'}`}>
         <span className="weather-glyph">{hud.weather==='RAIN'?<CloudRain size={18}/>:hud.weather==='SNOW'?<CloudSnow size={18}/>:hud.weather==='WINDY'?<Wind size={18}/>:hud.daylight<.25?<Moon size={18}/>:<SunIcon size={18}/>}</span>
         <strong data-testid="weather-label">{hud.weather||'CLEAR'}</strong><span className="weather-time"><Clock3 size={12}/>{hud.worldTime||'08:00'}</span><small>{Math.round(hud.windSpeed||0)} m/s</small>
       </div>
       {hud.inWater&&<div className="water-hud" data-testid="water-status"><Waves size={15}/><strong>SUBMERGING {Math.round((hud.submersion||0)*100)}%</strong><span>RESCUE IN {Math.max(0,4.1-(hud.waterTimer||0)).toFixed(1)}s</span></div>}
-      <div className="hud-top-row">{exploring?<div className="stat-card explore-zone-card"><div className="stat-caption"><Compass size={15}/> DISCOVERED DISTRICTS</div><div className="explore-progress-number">{(hud.visited||[]).length} <span>/ {ZONES.length}</span></div><div className="lap-progress"><span style={{width:`${(hud.visited||[]).length/ZONES.length*100}%`}}/></div></div>:<div className="stat-card lap-card"><div className="stat-caption"><Flag size={15}/> CURRENT LAP</div><div className="lap-value"><strong>{String(hud.lap).padStart(2,'0')}</strong><span> / {String(LAPS_TO_WIN).padStart(2,'0')}</span></div><div className="lap-progress"><span style={{width:`${((hud.lap-1+hud.checkpoint/3)/LAPS_TO_WIN)*100}%`}}/></div></div>}<div className="stat-card timer-card"><div className="stat-caption"><Clock3 size={15}/> {exploring?'EXPLORE TIME':'RACE TIME'}</div><div className="timer-value" data-testid="race-time">{formatTime(hud.elapsed)}</div><div className="stat-caption small-caption">{exploring?'RELICS FOUND':'BEST LAP'} <span>{exploring?`${(hud.collected||[]).length} / ${RELICS.length}`:formatTime(hud.bestLap)}</span></div></div></div>
-      <div className="top-right-stats"><div className="mini-stat"><Coins size={17}/><div><small>COINS</small><b>{String(hud.coins||0).padStart(2,'0')}</b></div></div><div className="mini-stat"><Shield size={17}/><div><small>{exploring?'RELICS':'CHECKPOINT'}</small><b>{exploring?(hud.collected||[]).length:hud.checkpoint} <span>/ {exploring?RELICS.length:2}</span></b></div></div><div className="mini-stat ai-smash-stat" data-testid="bot-score"><Bot size={17}/><div><small>BOTS SMASHED</small><b>{hud.botsDefeated||0} <span className="smash-points">· {hud.smashScore||0} PTS</span></b></div></div><div className="quality-indicator">{budget.tier.toUpperCase()}</div></div>
+      {!exploring&&<RaceBoard hud={hud}/>}
+      {!exploring&&<div className="gp-map-card"><RaceMinimap x={hud.x} z={hud.z} yaw={hud.yaw} dots={hud.rivalDots}/></div>}
+      {exploring&&<><div className="hud-top-row">{exploring?<div className="stat-card explore-zone-card"><div className="stat-caption"><Compass size={15}/> DISCOVERED DISTRICTS</div><div className="explore-progress-number">{(hud.visited||[]).length} <span>/ {ZONES.length}</span></div><div className="lap-progress"><span style={{width:`${(hud.visited||[]).length/ZONES.length*100}%`}}/></div></div>:<div className="stat-card lap-card"><div className="stat-caption"><Flag size={15}/> CURRENT LAP</div><div className="lap-value"><strong>{String(hud.lap).padStart(2,'0')}</strong><span> / {String(LAPS_TO_WIN).padStart(2,'0')}</span></div><div className="lap-progress"><span style={{width:`${((hud.lap-1+hud.checkpoint/3)/LAPS_TO_WIN)*100}%`}}/></div></div>}<div className="stat-card timer-card"><div className="stat-caption"><Clock3 size={15}/> {exploring?'EXPLORE TIME':'RACE TIME'}</div><div className="timer-value" data-testid="race-time">{formatTime(hud.elapsed)}</div><div className="stat-caption small-caption">{exploring?'RELICS FOUND':'BEST LAP'} <span>{exploring?`${(hud.collected||[]).length} / ${RELICS.length}`:formatTime(hud.bestLap)}</span></div></div></div>
+      <div className="top-right-stats"><div className="mini-stat"><Coins size={17}/><div><small>COINS</small><b>{String(hud.coins||0).padStart(2,'0')}</b></div></div><div className="mini-stat"><Shield size={17}/><div><small>{exploring?'RELICS':'CHECKPOINT'}</small><b>{exploring?(hud.collected||[]).length:hud.checkpoint} <span>/ {exploring?RELICS.length:2}</span></b></div></div><div className="mini-stat ai-smash-stat" data-testid="bot-score"><Bot size={17}/><div><small>BOTS SMASHED</small><b>{hud.botsDefeated||0} <span className="smash-points">· {hud.smashScore||0} PTS</span></b></div></div></div></>}
       <div className="bottom-left"><div className="waypoint"><span className="waypoint-icon">{exploring?<Compass size={17}/>:<Activity size={17}/>}</span><div><small>{exploring?'NOW EXPLORING':'ACTIVE CIRCUIT'}</small><strong>{exploring?hud.zoneName||'VOXEL WILDS':<>VOXEL VALLEY <span>01</span></>}</strong></div></div><div className="control-strip"><div><kbd>W</kbd><span>GAS</span></div><div><kbd>A</kbd><kbd>D</kbd><span>STEER</span></div><div><kbd>S</kbd><span>BRAKE</span></div><div><kbd>SPACE</kbd><span>DRIFT</span></div></div></div>
       <div className="bottom-right"><div className="gear-display"><span>DRIVE MODE</span><strong>{hud.speed<-.5?'REV':hud.boostTimer>0?'TURBO':'SPORT'}</strong></div><Speedometer speed={hud.speed||0} boost={hud.boostTimer>0}/></div>
       {exploring&&isRacing&&hud.nearbyVillager&&<button className="villager-talk-button" data-testid="talk-villager" onClick={talk} disabled={Math.abs(hud.speed)>4.5} aria-label={`Talk to ${hud.nearbyVillager.name}`}><MessageCircle size={15}/><span>{Math.abs(hud.speed)>4.5?'SLOW TO TALK':`TALK TO ${hud.nearbyVillager.name}`}</span><small>+2 COINS FIRST HELLO</small></button>}
       {isRacing&&<div className="mobile-controls" aria-label="Touch racing controls"><div className="mobile-steer"><TouchButton action="left" label="Steer left" inputRef={inputRef}><ArrowLeft/></TouchButton><TouchButton action="right" label="Steer right" inputRef={inputRef}><ArrowRight/></TouchButton></div><div className="mobile-pedals"><TouchButton action="drift" label="Drift while turning" inputRef={inputRef} variant="drift">DRIFT</TouchButton><TouchButton action="backward" label="Brake or reverse" inputRef={inputRef} variant="brake"><ArrowDown/></TouchButton><TouchButton action="forward" label="Accelerate" inputRef={inputRef} variant="gas"><ArrowUp/><small>GAS</small></TouchButton></div></div>}
     </main>
-    <div className="foot-bar"><span>ANIK STUDIOS · BIGGER WORLD v3.1</span><span className="built-with"><span className="built-dot"/> PIXEL WORLD ONLINE</span></div>
     {chat&&isRacing&&<div className="rival-chat" key={chat.key} role="status" data-testid="rival-chat" style={{'--rival':chat.color}}><b>{chat.name}</b><span>“{chat.text}”</span></div>}
     {nowPlaying&&<div className="now-playing" key={nowPlaying.id} role="status" data-testid="now-playing"><Radio size={18}/><div><small>NOW PLAYING · {nowPlaying.genre}</small><strong>{nowPlaying.name}</strong></div></div>}
     {toast&&isRacing&&<div className={`event-toast ${toast.color} ${toast.kind||''}`} key={toast.id}><strong>{toast.heading}</strong><small>{toast.small}</small></div>}
     {phase==='countdown'&&<div className="countdown-overlay"><small>GET READY</small><strong>{countdownValue>0?countdownValue:'GO!'}</strong><span>{mobile?'HOLD GAS TO ACCELERATE':'HOLD W TO ACCELERATE'}</span></div>}
-    {phase==='ready'&&<IntroCard loaded={loaded} onStart={start} onExplore={startExplore} mobile={mobile} onInstall={installGame} canInstall={!!installPrompt&&!standalone}/>}
-    {(phase==='finished'||phase==='paused')&&<CenterDialog type={phase} mode={mode} elapsed={hud.elapsed} bestLap={hud.bestLap} coins={hud.coins} onContinue={togglePause} onRestart={restart} onExplore={startExplore}/>}
+    {phase==='ready'&&<IntroCard loaded={loaded} onStart={start} onExplore={startExplore} mobile={mobile} onInstall={installGame} canInstall={!!installPrompt&&!standalone} difficulty={difficulty} onDifficulty={setDifficulty} best={best} onHome={onHome}/>}
+    {phase==='finished'&&mode==='race'&&<RaceResults results={hud.results} elapsed={hud.elapsed} bestLap={hud.bestLap} coins={hud.coins} record={record} onRestart={restart} onExplore={startExplore} onHome={onHome}/>}
+    {(phase==='paused'||(phase==='finished'&&mode!=='race'))&&<CenterDialog type={phase} mode={mode} elapsed={hud.elapsed} bestLap={hud.bestLap} coins={hud.coins} onContinue={togglePause} onRestart={restart} onExplore={startExplore} onHome={onHome}/>}
     {showMap&&<WorldMapPanel hud={hud} onClose={()=>setShowMap(false)} onTravel={travelTo}/>}
     {showSettings&&<div className="help-backdrop settings-backdrop" onClick={()=>setShowSettings(false)}><div className="help-panel settings-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>GALAXY SETTINGS</h2><button onClick={()=>setShowSettings(false)} aria-label="Close settings"><X/></button></div><p>Choose the best 3D performance for your phone. Original 16-pixel textures and chunked voxel scenery are enabled in every preset.</p><div className="mobile-setting-caption"><GaugeCircle size={18}/> GRAPHICS QUALITY</div><div className="quality-options" role="group" aria-label="Graphics quality">{QUALITY_OPTIONS.map(q=><button key={q} data-testid={`quality-${q}`} className={quality===q?'selected':''} aria-pressed={quality===q} onClick={()=>setQuality(q)}>{q.toUpperCase()}</button>)}</div><p className="quality-explain">Current renderer: {budget.label}. Render scale: {budget.dpr.toFixed(2)}×. {quality==='auto'?'Automatically chosen using available device hints.':''}</p><BattleChoice/><div className="weather-preview-actions"><button data-testid="next-weather" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'weather'}))}><CloudRain size={15}/> NEXT WEATHER</button><button data-testid="preview-night" onClick={()=>setWeatherPreviewRequest(old=>({id:(old?.id||0)+1,kind:'night'}))}><Moon size={15}/> PREVIEW NIGHT</button></div><button className="settings-row-button" aria-pressed={haptics} onClick={()=>setHaptics(x=>!x)}><Vibrate size={20}/> VIBRATION FEEDBACK <strong>{haptics?'ON':'OFF'}</strong></button><button className="settings-row-button" data-testid="toggle-voice" aria-pressed={voice} onClick={()=>setVoice(x=>!x)}>{voice?<Volume2 size={20}/>:<VolumeX size={20}/>} VOICES · ANNOUNCER &amp; RIVALS <strong>{voice?'ON':'OFF'}</strong></button><button className="settings-row-button" data-testid="toggle-sfx" aria-pressed={sfx} onClick={()=>setSfx(x=>!x)}><Speaker size={20}/> ENGINE &amp; EFFECTS <strong>{sfx?'ON':'OFF'}</strong></button><button className="settings-row-button" data-testid="toggle-music" aria-pressed={music} onClick={()=>setMusic(x=>!x)}>{music?<Music size={20}/>:<Music2 size={20}/>} MUSIC <strong>{music?'ON':'OFF'}</strong></button><div className="quality-options radio-options" role="group" aria-label="Radio station">{RADIO_STATIONS.map(s=><button key={s.id} data-testid={`radio-${s.id}`} className={music&&station===s.id?'selected':''} aria-pressed={music&&station===s.id} onClick={()=>tuneRadio(s.id)}>{s.name}<small>{s.genre}</small></button>)}</div><button className="settings-row-button" onClick={enterFullscreen}><Maximize2 size={20}/> FULLSCREEN / LANDSCAPE <span>OPEN</span></button><button className="settings-row-button" onClick={installGame}><Download size={20}/> INSTALL TO HOME SCREEN <span>{standalone?'INSTALLED':installPrompt?'INSTALL':'HELP'}</span></button><button className="primary-button" onClick={()=>setShowSettings(false)}>BACK TO RACE <Check size={16}/></button></div></div>}
     {showInstallHelp&&<div className="help-backdrop settings-backdrop" onClick={()=>setShowInstallHelp(false)}><div className="help-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>INSTALL ON SAMSUNG</h2><button onClick={()=>setShowInstallHelp(false)} aria-label="Close installation help"><X/></button></div><p>Open the game over HTTPS in <strong>Samsung Internet</strong> or <strong>Chrome</strong>. Tap the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. Launch ANIK Racers from your Apps screen to play full screen.</p><p>Rotate the phone horizontally. The first play loads the 3D models; later launches can reuse cached game assets.</p><button className="primary-button" onClick={()=>setShowInstallHelp(false)}>GOT IT <Check size={16}/></button></div></div>}
-    {showHow&&<div className="help-backdrop" onClick={()=>setShowHow(false)}><div className="help-panel" onClick={e=>e.stopPropagation()}><div className="help-top"><h2>HOW TO RACE</h2><button onClick={()=>setShowHow(false)} aria-label="Close help"><X size={21}/></button></div><p>Race three laps on Voxel Valley. Cross checkpoints 1 and 2 in order before the finish line. You cannot skip checkpoints to win.</p><div className="help-table"><div><kbd>W</kbd><kbd>↑</kbd><span>Accelerate</span></div><div><kbd>S</kbd><kbd>↓</kbd><span>Brake / reverse</span></div><div><kbd>A</kbd><kbd>D</kbd><span>Steer</span></div><div><kbd>SPACE</kbd><span>Drift / tighter turning</span></div><div><kbd>C</kbd><span>Chase / overhead camera</span></div><div><kbd>P</kbd><kbd>ESC</kbd><span>Pause / resume</span></div><div><kbd>R</kbd><span>Restart race</span></div></div><p className="help-note">Battle Race adds warning mines, explosive barrels and BOMB / MINE controls to the Voxel Valley circuit. Press B to throw ahead or Q to drop behind. Blast damage reduces kart health; wrecked karts recover with a temporary shield without losing lap progress. Cyan pads refill ammo and green pads repair. Rival karts deploy hazards too. Drive through a rainbow ? box to collect a power-up, then press F or tap the item button: TURBO boosts you, SHIELD blocks blasts and oil for six seconds, ROCKET homes in on the rival ahead, and OIL SLICK spins out whoever drives over it. Rivals collect boxes and use items too. Turn Battle Race off for a classic race. Seven AI racers share the six-lane track and overtake each other; three of them also patrol the open world. Press N or tap the radio icon to switch music stations. Eight voxel creatures wander or flee from approaching racers. Crash into a bot at speed to reduce its health; a powerful smash knocks it out in an arcade-style burst. Bots reappear after a short cooldown. For open-world mode, press E or tap the compass, open the map with M to fast travel, find all ten relics, and follow the highways into four new frontier districts. Drive through the glowing grove portal to return to Voxel Valley. Blockhaven Village has 12 friendly walking AI characters. Approach at low speed, tap TALK or press T, and read their tips. Villagers step aside for traffic and cannot be damaged. Use the map to travel to three lakes; water causes splash, drag and gradual submersion before automatic shore rescue. Weather cycles through CLEAR → RAIN → SNOW → WINDY with changes to steering grip and wind drift. The clock progresses through day and night. Settings can preview the next weather or nighttime. On Galaxy, use the arrows to steer, GAS to accelerate, BRAKE to slow down, and DRIFT for sharper turns.</p><button className="primary-button" onClick={()=>setShowHow(false)}>GOT IT <Check size={16}/></button></div></div>}
+    {showHow&&<div className="help-backdrop" onClick={()=>setShowHow(false)}><div className="help-panel how-panel" onClick={e=>e.stopPropagation()} role="dialog" aria-label="How to play"><div className="help-top"><h2>HOW TO PLAY</h2><button onClick={()=>setShowHow(false)} aria-label="Close help"><X size={21}/></button></div>
+      <div className="how-grid">
+        <section><h3><Flag size={15}/> GRAND PRIX</h3><p>Three laps against {RIVALS.length} rivals. Pass checkpoints 1 and 2 before the line; the board shows your place and the map shows everyone. Pick EASY, NORMAL or HARD on the start screen.</p></section>
+        <section><h3><Gauge size={15}/> DRIVING</h3><p>Hold GAS, steer with the arrows, tap DRIFT for tighter turns. Hitting a wall turns you along it, so keep the throttle on. Lime pads are turbo; coins add points.</p></section>
+        <section><h3><Shield size={15}/> POWER-UPS</h3><p>Drive through a rainbow ? box: TURBO boosts, SHIELD blocks blasts for 6 s, ROCKET homes on the kart ahead, OIL spins out whoever follows. BOMB throws ahead, MINE drops behind.</p></section>
+        <section><h3><Compass size={15}/> EXPLORE</h3><p>Ten districts, ten relics, lakes and friendly villagers (slow down and tap TALK). Open the map to fast travel. Weather and the day cycle change grip.</p></section>
+      </div>
+      {!mobile&&<div className="help-table"><div><kbd>W</kbd><kbd>↑</kbd><span>Accelerate</span></div><div><kbd>S</kbd><kbd>↓</kbd><span>Brake / reverse</span></div><div><kbd>A</kbd><kbd>D</kbd><span>Steer</span></div><div><kbd>SPACE</kbd><span>Drift</span></div><div><kbd>B</kbd><kbd>Q</kbd><kbd>F</kbd><span>Bomb · mine · power-up</span></div><div><kbd>C</kbd><span>Camera</span></div><div><kbd>M</kbd><span>Map</span></div><div><kbd>N</kbd><span>Radio</span></div><div><kbd>P</kbd><kbd>ESC</kbd><span>Pause</span></div><div><kbd>R</kbd><span>Restart</span></div></div>}
+      <button className="primary-button" onClick={()=>setShowHow(false)}>GOT IT <Check size={16}/></button></div></div>}
   </div>
 }
 
-export default function App(){return <BattleProvider><WorldApp/><BattleHud/></BattleProvider>}
+export default function App({onHome}){return <BattleProvider><WorldApp onHome={onHome}/><BattleHud/></BattleProvider>}

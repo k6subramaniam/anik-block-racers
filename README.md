@@ -2,10 +2,20 @@
 
 **Real playable 3D world** for Samsung Galaxy and modern Android browsers. Based on the original Higgsfield 3D Jutsu asset scene, updated with five themed zones and connecting roads. The game remains an original voxel racer, not a Minecraft/Mojang product.
 
+## v5 — Home screen, race position, track map and results
+
+- **Home screen:** the game now opens on one screen with every mode: Grand Prix, Battle Circuits, Bot Smash and Explore, plus Invite a Friend. Each card shows your progress (best Grand Prix finish, battle wins, Bot Smash high score) and marks the mode you played last. Challenge links (`?challenge=`), `?view=world`, `?view=battle` and the install shortcuts still open their modes directly.
+- **Back gesture works:** every mode is its own browser history entry, so Android's back gesture (or the browser back button) returns to the home screen instead of leaving the game. A **HOME** button sits in every mode, on the Grand Prix start card and in the pause menu.
+- **Live race position:** the Grand Prix board shows your place (e.g. 3/8), lap, time, best lap, checkpoint and coins in one compact strip. Positions compare the player and the seven rivals in metres of race distance (`src/game/standings.js`).
+- **Track map:** a live overhead map of the circuit with every rival and an arrow for you (`src/game/RaceMinimap.jsx`). The battle circuits' map now shows on phones too.
+- **Results screen:** final standings for all eight karts, with gaps to the winner. Rivals still on track get a time projected from their pace. Your best finish is saved on this device (`src/game/records.js`) and shown on the start card and home screen.
+- **Difficulty:** EASY, NORMAL or HARD sets rival pace (86%, 100%, 110%) and is remembered.
+- **Cleaner HUD and help:** the stale version labels, footer and quality badge are gone, wall touches no longer flash a banner (they glance you along the barrier anyway), and How to Play is four short sections instead of one long paragraph.
+
 ## Game modes
 
 - **Explore Open World:** roam a bounded ~312 × 264 metre terrain at your own pace, across five zones: Neon City, Crystal Ridge, Sunset Canyon, Ember Peaks, and Portal Grove. Discover each location, collect five floating relics, fast-travel from the map, and drive through the grove portal to return to Voxel Valley. Landmarks have simplified collision volumes, an exterior world border, and a lava rescue area.
-- **Race 3 Laps:** Voxel Valley Grand Circuit race against seven AI rivals on an eight-kart grid (two rows of four; you start at the back on the right). Rivals overtake by switching to a free lane. The 321 m lap is a six-lane, 21.6 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
+- **Grand Prix (Race 3 Laps):** Voxel Valley Grand Circuit race against seven AI rivals on an eight-kart grid (two rows of four; you start at the back on the right). Rivals overtake by switching to a free lane. The 321 m lap is a six-lane, 21.6 m-wide road around the castle. Pass the two checkpoints in order and race for your best lap. Boost pads and coins are spread across different lanes.
 
 ## Cool new Higgsfield 3D assets
 

@@ -361,3 +361,67 @@ button{touch-action:manipulation;cursor:pointer}
 .rival-chat span{font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.4px;color:#f4fbea}
 @keyframes rival-chat-in{from{opacity:0;transform:translate(-50%,6px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
 @media(max-height:450px) and (orientation:landscape){.rival-chat{top:24%;padding:5px 12px}.rival-chat span{font-size:14px}}
+/* ===== Grand Prix HUD v5: position, lap, time and a live track map ===== */
+.home-button{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px 0 9px;margin-right:4px;border:1px solid rgba(200,250,88,.55);border-radius:9px;background:rgba(16,32,30,.72);color:#e6ffc0;font:900 11px 'DM Sans',system-ui,sans-serif;letter-spacing:1px;cursor:pointer;backdrop-filter:blur(8px);touch-action:manipulation}
+.home-button:hover{background:rgba(200,250,88,.18)}.home-button:focus-visible{outline:3px solid #d3ff71;outline-offset:2px}
+.gp-board{position:absolute;top:104px;left:35px;display:grid;grid-template-columns:auto auto auto;gap:6px;pointer-events:none;z-index:3}
+.gp-board>div{background:rgba(8,18,20,.8);border:1px solid rgba(232,248,240,.16);border-radius:10px;backdrop-filter:blur(10px)}
+.gp-board small{display:flex;align-items:center;gap:4px;font:800 9px 'DM Sans',sans-serif;letter-spacing:1.3px;color:#9fb2b0}
+.gp-board small svg{color:#aff247}
+.gp-pos{display:flex;align-items:baseline;gap:2px;padding:6px 12px 6px 10px;position:relative}
+.gp-pos small{position:absolute;top:6px;left:10px}
+.gp-pos strong{font:900 50px/1 'Barlow Condensed',Impact,sans-serif;color:#fff;margin-top:12px;font-variant-numeric:tabular-nums}
+.gp-pos span{font:800 18px 'Barlow Condensed',sans-serif;color:#90a3a0}
+.gp-pos.leader{border-color:#ffd166;background:rgba(63,48,12,.82)}.gp-pos.leader strong{color:#ffe08a}
+.gp-cell{padding:8px 12px;min-width:92px;display:flex;flex-direction:column;gap:3px}
+.gp-cell strong{font:800 30px/1 'Barlow Condensed',sans-serif;color:#fff;font-variant-numeric:tabular-nums}
+.gp-cell strong span{font-size:17px;color:#90a3a0}
+.gp-time{min-width:128px}.gp-time strong{font-size:26px;letter-spacing:.5px}
+.gp-time em{font:700 9px 'DM Sans',sans-serif;letter-spacing:.8px;color:#c3d4cc;font-style:normal}
+.gp-bar{height:4px;border-radius:3px;background:#374744;overflow:hidden;margin-top:2px}.gp-bar i{display:block;height:100%;background:#aff247;transition:width .25s linear}
+.gp-board .gp-chips{grid-column:1/-1;display:flex;gap:6px;background:none;border:0;backdrop-filter:none}
+.gp-chips span{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:rgba(8,18,20,.72);border:1px solid rgba(232,248,240,.13);font:800 10px 'DM Sans',sans-serif;letter-spacing:.8px;color:#dfeee6}
+.gp-chips svg{color:#aff247}
+.gp-map-card{position:absolute;top:104px;right:35px;width:168px;padding:6px;border-radius:12px;background:rgba(8,18,20,.62);border:1px solid rgba(232,248,240,.15);pointer-events:none;z-index:3;backdrop-filter:blur(6px)}
+.gp-minimap{display:block;width:100%;height:auto}
+.gp-race .weather-hud{display:none}
+.app-shell.gp-race~.battle-overlay .battle-health{top:206px;left:35px}
+/* Difficulty, results and personal bests */
+.gp-difficulty{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 2px}
+.gp-difficulty button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:rgba(14,29,30,.75);color:#e9f5ee;cursor:pointer;text-align:left;touch-action:manipulation}
+.gp-difficulty b{font:900 12px 'DM Sans',sans-serif;letter-spacing:1px}.gp-difficulty small{font-size:9px;color:#a9bcb6}
+.gp-difficulty button.selected{border-color:#c8fa58;background:rgba(78,104,34,.6);color:#f0ffd4}
+.gp-difficulty button:focus-visible{outline:3px solid #d3ff71;outline-offset:2px}
+.gp-results{max-width:560px}
+.gp-results h1 em{color:#c8fa58;font-style:normal}
+.result-medal.podium-1{background:#ffd166;color:#3a2a00}.result-medal.podium-2{background:#d8e1e8;color:#26323a}.result-medal.podium-3{background:#e0a072;color:#3b1d08}
+.gp-record{margin:4px 0 0!important;display:block!important;font:800 11px 'DM Sans',sans-serif!important;letter-spacing:1.2px;color:#ffe08a!important}
+.gp-standings{list-style:none;margin:14px 0 4px;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;text-align:left}
+.gp-standings li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;background:rgba(255,255,255,.05);font:700 12px 'DM Sans',sans-serif}
+.gp-standings li.me{background:rgba(200,250,88,.18);outline:1px solid rgba(200,250,88,.6)}
+.gp-standings i{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.gp-standings b{letter-spacing:.8px}
+.gp-place{font:900 16px 'Barlow Condensed',sans-serif;width:16px;color:#c8fa58}
+.gp-standings .gp-gap{margin-left:auto;font-variant-numeric:tabular-nums;color:#c6d6d0;font-size:11px}
+@media(max-width:950px){.gp-board,.gp-map-card{top:84px}.gp-board{left:21px}.gp-map-card{right:21px;width:150px}.app-shell.gp-race~.battle-overlay .battle-health{left:21px;top:186px}}
+@media(max-width:650px){.gp-board,.gp-map-card{top:76px}.gp-board{left:10px;gap:5px}.gp-map-card{right:10px;width:112px;padding:4px}
+  .gp-pos strong{font-size:40px}.gp-cell{min-width:64px;padding:6px 9px}.gp-cell strong{font-size:24px}.gp-time{min-width:96px}.gp-time strong{font-size:20px}
+  .brand-block .brand-mark,.brand-block .brand-wordmark{display:none}.home-button{height:34px;padding:0 9px 0 7px}
+  .gp-standings{grid-template-columns:1fr}.gp-standings li{padding:4px 8px}
+  .app-shell.gp-race~.battle-overlay .battle-health{top:174px;left:10px}}
+@media(pointer:coarse) and (orientation:portrait){.gp-board,.gp-map-card{top:calc(72px + env(safe-area-inset-top))}}
+@media(pointer:coarse) and (orientation:landscape){.gp-board,.gp-map-card{top:54px}.gp-board{left:max(12px,env(safe-area-inset-left))}.gp-map-card{right:max(12px,env(safe-area-inset-right));width:128px}
+  .gp-pos strong{font-size:38px}.gp-cell{padding:5px 9px;min-width:62px}.gp-cell strong{font-size:22px}.gp-time{min-width:92px}.gp-time strong{font-size:19px}.gp-chips span{padding:2px 7px;font-size:9px}
+  .app-shell.gp-race~.battle-overlay .battle-health{top:146px;left:max(12px,env(safe-area-inset-left))}
+  .gp-results .gp-standings{grid-template-columns:1fr 1fr;margin:8px 0 0}.gp-results .finish-grid{display:none}}
+@media(pointer:coarse) and (orientation:landscape) and (max-height:360px){.gp-board,.gp-map-card{top:48px}.gp-map-card{width:108px}}
+.how-panel{max-width:640px}
+.how-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.how-grid section{padding:11px 12px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
+.how-grid h3{display:flex;align-items:center;gap:7px;margin:0 0 6px;font:900 14px 'DM Sans',sans-serif;letter-spacing:1px;color:#d4ff8a}
+.how-grid p{margin:0!important;font-size:12px!important;line-height:1.5!important;color:#c6d6d2}
+@media(max-width:650px){.how-grid{grid-template-columns:1fr}}
+@media(orientation:landscape) and (max-height:520px){.how-panel{max-height:92dvh;overflow-y:auto}.how-grid p{font-size:11px!important}}
+.intro-home{margin:0 0 14px}
+@media(orientation:landscape) and (max-height:520px){.intro-home{margin-bottom:6px;height:30px}}
+@media(pointer:coarse) and (orientation:landscape){.gp-map-card{width:108px}.gp-race .hud .bottom-right{top:auto;bottom:130px}.gp-race .speedometer{transform-origin:bottom right}}

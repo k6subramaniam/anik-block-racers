@@ -12,6 +12,7 @@ import { createSoundEngine, sfxFor, RADIO_STATIONS, stationById, nextStation } f
 import { createChatter } from './game/chatter.js'
 import { RIVALS } from './game/npcAI.js'
 import RaceMinimap from './game/RaceMinimap.jsx'
+import ExploreMinimap from './game/ExploreMinimap.jsx'
 import { DIFFICULTY, safeDifficulty, ordinal } from './game/standings.js'
 import { loadBest, recordResult } from './game/records.js'
 import { createHeldInput, getRenderBudget, isCoarsePointer, safeStoredQuality, QUALITY_OPTIONS } from './game/mobile.js'
@@ -90,13 +91,28 @@ function Speedometer({speed,boost}){
     <div className="speed-content"><Gauge size={15} strokeWidth={2.5}/><span className="speed-numeral">{kmh}</span><span className="speed-label">KM / H</span></div>
   </div>
 }
+function WeatherChip({hud}){
+  const night=hud.daylight<.25
+  return <span className={`gp-weather ${night?'night':''}`} data-testid="weather-status" aria-label={`Game clock ${hud.worldTime||'08:00'}, weather ${hud.weather||'CLEAR'}`}>
+    {hud.weather==='RAIN'?<CloudRain size={11}/>:hud.weather==='SNOW'?<CloudSnow size={11}/>:hud.weather==='WINDY'?<Wind size={11}/>:night?<Moon size={11}/>:<SunIcon size={11}/>}
+    <b data-testid="weather-label">{hud.weather||'CLEAR'}</b> {hud.worldTime||'08:00'}</span>
+}
+function ExploreBoard({hud}){
+  const found=(hud.visited||[]).length,relics=(hud.collected||[]).length
+  return <div className="gp-board ex-board" data-testid="explore-board">
+    <div className="gp-cell"><small><Compass size={11}/> DISTRICTS</small><strong data-testid="explore-districts">{found}<span>/{ZONES.length}</span></strong><div className="gp-bar"><i style={{width:`${found/ZONES.length*100}%`}}/></div></div>
+    <div className="gp-cell"><small><Shield size={11}/> RELICS</small><strong>{relics}<span>/{RELICS.length}</span></strong><div className="gp-bar"><i style={{width:`${relics/RELICS.length*100}%`}}/></div></div>
+    <div className="gp-cell gp-time"><small><Clock3 size={11}/> EXPLORING</small><strong data-testid="race-time">{formatTime(hud.elapsed)}</strong><em>{hud.zoneName||'VOXEL WILDS'}</em></div>
+    <div className="gp-chips"><WeatherChip hud={hud}/><span><Coins size={11}/> {hud.coins||0}</span><span data-testid="bot-score"><Bot size={11}/> {hud.botsDefeated||0} KO</span></div>
+  </div>
+}
 function RaceBoard({hud}){
   const pos=hud.position,field=hud.fieldSize||RIVALS.length+1
   return <div className="gp-board" data-testid="race-board">
     <div className={`gp-pos ${pos===1?'leader':''}`} data-testid="race-position"><small>POS</small><strong>{pos||'–'}</strong><span>/{field}</span></div>
     <div className="gp-cell"><small><Flag size={11}/> LAP</small><strong>{hud.lap}<span>/{LAPS_TO_WIN}</span></strong><div className="gp-bar"><i style={{width:`${Math.min(100,((hud.lap-1+hud.checkpoint/3)/LAPS_TO_WIN)*100)}%`}}/></div></div>
     <div className="gp-cell gp-time"><small><Clock3 size={11}/> TIME</small><strong data-testid="race-time">{formatTime(hud.elapsed)}</strong><em>BEST {formatTime(hud.bestLap)}</em></div>
-    <div className="gp-chips"><span><Shield size={11}/> CP {hud.checkpoint}/2</span><span><Coins size={11}/> {hud.coins||0}</span></div>
+    <div className="gp-chips"><span><Shield size={11}/> CP {hud.checkpoint}/2</span><WeatherChip hud={hud}/><span><Coins size={11}/> {hud.coins||0}</span></div>
   </div>
 }
 function DifficultyPicker({value,onChange}){
@@ -324,15 +340,11 @@ function WorldApp({onHome}){
       <div className="top-buttons"><button title="Open world map (M)" aria-label="Open world map" data-testid="open-map" onClick={openMap}><MapIcon size={19}/></button><button title={exploring?'Return to 3-lap race':'Explore open world'} aria-label={exploring?'Return to race':'Explore open world'} data-testid="switch-mode" onClick={exploring?startRaceMode:startExplore}>{exploring?<Flag size={19}/>:<Compass size={19}/>}</button><button title="How to play" aria-label="How to play" onClick={openHow}><CircleHelp size={19}/></button><button title="Galaxy graphics and controls" aria-label="Graphics and controls settings" data-testid="open-settings" onClick={openSettings}><Settings2 size={19}/></button><button title="Switch radio station (N)" aria-label="Switch radio station" data-testid="radio-next" onClick={cycleRadio}><Radio size={19}/></button><button title="Switch camera (C)" aria-label="Switch racing camera" onClick={toggleCamera}><Camera size={19}/></button><button title="Pause or resume (P)" aria-label="Pause or resume race" disabled={phase==='ready'||phase==='finished'} onClick={togglePause}>{phase==='paused'?<Play size={19}/>:<Pause size={19}/>}</button></div>
     </header>
     <main data-testid="world-hud" data-position={hud.position||""} data-world-x={hud.x} data-world-z={hud.z} className="hud" aria-live="off">
-      <div className={`weather-hud ${hud.daylight<.25?'night':''}`} data-testid="weather-status" aria-label={`Game clock ${hud.worldTime||'08:00'}, weather ${hud.weather||'CLEAR'}`}>
-        <span className="weather-glyph">{hud.weather==='RAIN'?<CloudRain size={18}/>:hud.weather==='SNOW'?<CloudSnow size={18}/>:hud.weather==='WINDY'?<Wind size={18}/>:hud.daylight<.25?<Moon size={18}/>:<SunIcon size={18}/>}</span>
-        <strong data-testid="weather-label">{hud.weather||'CLEAR'}</strong><span className="weather-time"><Clock3 size={12}/>{hud.worldTime||'08:00'}</span><small>{Math.round(hud.windSpeed||0)} m/s</small>
-      </div>
       {hud.inWater&&<div className="water-hud" data-testid="water-status"><Waves size={15}/><strong>SUBMERGING {Math.round((hud.submersion||0)*100)}%</strong><span>RESCUE IN {Math.max(0,4.1-(hud.waterTimer||0)).toFixed(1)}s</span></div>}
       {!exploring&&<RaceBoard hud={hud}/>}
       {!exploring&&<div className="gp-map-card"><RaceMinimap x={hud.x} z={hud.z} yaw={hud.yaw} dots={hud.rivalDots}/></div>}
-      {exploring&&<><div className="hud-top-row">{exploring?<div className="stat-card explore-zone-card"><div className="stat-caption"><Compass size={15}/> DISCOVERED DISTRICTS</div><div className="explore-progress-number">{(hud.visited||[]).length} <span>/ {ZONES.length}</span></div><div className="lap-progress"><span style={{width:`${(hud.visited||[]).length/ZONES.length*100}%`}}/></div></div>:<div className="stat-card lap-card"><div className="stat-caption"><Flag size={15}/> CURRENT LAP</div><div className="lap-value"><strong>{String(hud.lap).padStart(2,'0')}</strong><span> / {String(LAPS_TO_WIN).padStart(2,'0')}</span></div><div className="lap-progress"><span style={{width:`${((hud.lap-1+hud.checkpoint/3)/LAPS_TO_WIN)*100}%`}}/></div></div>}<div className="stat-card timer-card"><div className="stat-caption"><Clock3 size={15}/> {exploring?'EXPLORE TIME':'RACE TIME'}</div><div className="timer-value" data-testid="race-time">{formatTime(hud.elapsed)}</div><div className="stat-caption small-caption">{exploring?'RELICS FOUND':'BEST LAP'} <span>{exploring?`${(hud.collected||[]).length} / ${RELICS.length}`:formatTime(hud.bestLap)}</span></div></div></div>
-      <div className="top-right-stats"><div className="mini-stat"><Coins size={17}/><div><small>COINS</small><b>{String(hud.coins||0).padStart(2,'0')}</b></div></div><div className="mini-stat"><Shield size={17}/><div><small>{exploring?'RELICS':'CHECKPOINT'}</small><b>{exploring?(hud.collected||[]).length:hud.checkpoint} <span>/ {exploring?RELICS.length:2}</span></b></div></div><div className="mini-stat ai-smash-stat" data-testid="bot-score"><Bot size={17}/><div><small>BOTS SMASHED</small><b>{hud.botsDefeated||0} <span className="smash-points">· {hud.smashScore||0} PTS</span></b></div></div></div></>}
+      {exploring&&<ExploreBoard hud={hud}/>}
+      {exploring&&<button type="button" className="gp-map-card ex-map-card" onClick={openMap} aria-label="Open the full world map" data-testid="explore-map-card"><ExploreMinimap x={hud.x} z={hud.z} yaw={hud.yaw} visited={hud.visited} collected={hud.collected} dots={hud.rivalDots}/></button>}
       <div className="bottom-left"><div className="waypoint"><span className="waypoint-icon">{exploring?<Compass size={17}/>:<Activity size={17}/>}</span><div><small>{exploring?'NOW EXPLORING':'ACTIVE CIRCUIT'}</small><strong>{exploring?hud.zoneName||'VOXEL WILDS':<>VOXEL VALLEY <span>01</span></>}</strong></div></div><div className="control-strip"><div><kbd>W</kbd><span>GAS</span></div><div><kbd>A</kbd><kbd>D</kbd><span>STEER</span></div><div><kbd>S</kbd><span>BRAKE</span></div><div><kbd>SPACE</kbd><span>DRIFT</span></div></div></div>
       <div className="bottom-right"><div className="gear-display"><span>DRIVE MODE</span><strong>{hud.speed<-.5?'REV':hud.boostTimer>0?'TURBO':'SPORT'}</strong></div><Speedometer speed={hud.speed||0} boost={hud.boostTimer>0}/></div>
       {exploring&&isRacing&&hud.nearbyVillager&&<button className="villager-talk-button" data-testid="talk-villager" onClick={talk} disabled={Math.abs(hud.speed)>4.5} aria-label={`Talk to ${hud.nearbyVillager.name}`}><MessageCircle size={15}/><span>{Math.abs(hud.speed)>4.5?'SLOW TO TALK':`TALK TO ${hud.nearbyVillager.name}`}</span><small>+2 COINS FIRST HELLO</small></button>}

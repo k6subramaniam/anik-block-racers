@@ -84,17 +84,37 @@ function Arena({arena}){
     <Cube at={[12,7,-half-6]} size={[.6,14,.6]} color="#c8fa58"/>
   </group>
 }
+const BOT_SKIN=['#f2c79b','#c68863','#8d5524','#ffdbac','#6b4226','#e8b08a']
+const BOT_HAIR=['#20222a','#4a2f1d','#8a5a2b','#c9a227','#b03a2e','#5b5f6a']
+const BOT_PANTS=['#2e4057','#4a4e57','#6b5136','#374f35','#572e3a','#54486b']
+/** The smash targets are people now, not robots: same shirt colour, footprint and
+ * health bar as the old bots (gameplay is untouched), but with skin, hair, a face,
+ * arms and legs. Limbs hang from named pivot groups so the render loop can swing
+ * them into a walk cycle while the bot orbits its home. */
 function Robot({def,rootRef,burstRef}){
+  const skin=BOT_SKIN[def.index%BOT_SKIN.length],hair=BOT_HAIR[def.index%BOT_HAIR.length],pants=BOT_PANTS[def.index%BOT_PANTS.length]
   return <>
     <group ref={rootRef} name={`SHOWDOWN_${def.id}`}>
-      <Cube at={[0,1,0]} size={[1.45,1.25,1]} color={def.color}/>
-      <Cube at={[0,2,0]} size={[1.15,.82,1]} color="#263b46"/>
-      <Cube at={[0,2.05,-.52]} size={[.8,.22,.08]} color="#f7ffa5"/>
-      {[-1,1].map(s=><group key={s}>
-        <Cube at={[s*.95,1.1,0]} size={[.4,1.2,.5]} color={def.color}/>
-        <Cube at={[s*.4,.3,0]} size={[.48,.6,.6]} color="#263b46"/>
-      </group>)}
-      <group name="bar" position={[0,2.75,0]}>
+      <group name="body">
+        {[-1,1].map(s=><group key={`leg${s}`} name={s<0?'legL':'legR'} position={[s*.22,.98,0]}>
+          <Cube at={[0,-.42,0]} size={[.34,.84,.4]} color={pants}/>
+          <Cube at={[0,-.88,-.06]} size={[.38,.16,.58]} color="#26303a"/>
+        </group>)}
+        <Cube at={[0,1.44,0]} size={[.95,.92,.55]} color={def.color}/>
+        <Cube at={[0,1.02,0]} size={[.97,.13,.57]} color="#26303a"/>
+        {[-1,1].map(s=><group key={`arm${s}`} name={s<0?'armL':'armR'} position={[s*.64,1.84,0]}>
+          <Cube at={[0,-.33,0]} size={[.3,.7,.35]} color={def.color}/>
+          <Cube at={[0,-.79,0]} size={[.3,.22,.35]} color={skin}/>
+        </group>)}
+        <group name="head" position={[0,1.92,0]}>
+          <Cube at={[0,.4,0]} size={[.78,.76,.72]} color={skin}/>
+          <Cube at={[0,.83,0]} size={[.84,.2,.78]} color={hair}/>
+          <Cube at={[0,.58,.33]} size={[.84,.55,.14]} color={hair}/>
+          {[-1,1].map(s=><Cube key={`eye${s}`} at={[s*.18,.44,-.37]} size={[.09,.15,.03]} color="#1c2530"/>)}
+          <Cube at={[0,.2,-.37]} size={[.3,.05,.03]} color="#7a4636"/>
+        </group>
+      </group>
+      <group name="bar" position={[0,3.1,0]}>
         <Cube at={[0,0,0]} size={[1.65,.18,.08]} color="#172c36"/>
         <mesh name="fill" position={[0,0,.05]}><boxGeometry args={[1.55,.1,.06]}/><meshBasicMaterial color="#c8fa58"/></mesh>
       </group>
@@ -154,6 +174,11 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
       const root=robots.current[n.id],burst=bursts.current[n.id]
       if(root){
         root.visible=n.health>0&&n.respawn<=0;root.position.set(n.x,0,n.z);root.rotation.y=n.yaw
+        const walk=Math.sin((state.ticks??state.tick??0)*(4+n.rate*5)+(n.phase||0)*3)
+        const legL=root.getObjectByName('legL'),legR=root.getObjectByName('legR'),armL=root.getObjectByName('armL'),armR=root.getObjectByName('armR'),body=root.getObjectByName('body')
+        if(legL&&legR){legL.rotation.x=walk*.55;legR.rotation.x=-walk*.55}
+        if(armL&&armR){armL.rotation.x=-walk*.45;armR.rotation.x=walk*.45}
+        if(body)body.position.y=Math.abs(walk)*.06
         const bar=root.getObjectByName('bar'),fill=root.getObjectByName('fill')
         if(bar)bar.rotation.y=camera.rotation.y-n.yaw
         if(fill){const ratio=Math.max(.01,n.health/65);fill.scale.x=ratio;fill.position.x=-(1-ratio)*.77}

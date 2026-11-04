@@ -1,7 +1,7 @@
 {
   "name": "anik-block-racers",
   "private": true,
-  "version": "4.1.0",
+  "version": "5.0.0",
   "type": "module",
   "description": "One-tap friend invites, automatic encrypted peer discovery, Creator Studio, custom tracks, turbo and voxel battle racing",
   "scripts": {

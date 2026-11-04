@@ -185,7 +185,7 @@ export default function ShowdownGame({invitation,onExit}){
   return <div className={`showdown phase-${phase}`} data-testid="showdown-game" data-arena-width={arena.bounds.maxX-arena.bounds.minX} data-bots={arena.bots.length}>
     <div className="sd-world"><SceneBoundary><ShowdownScene engineRef={engineRef} inputRef={inputRef} phase={phase} arena={arena} budget={budget} onReady={setReady} onHud={setHud} onFinish={finish} onReplayEnd={replayEnd} cameraMode={camera}/></SceneBoundary></div>
     <header className="sd-top">
-      <button className="sd-brand" onClick={leave} aria-label="Return to original race and open world"><span>A</span><b>ANIK <small>BOT SMASH</small></b></button>
+      <button className="sd-brand" onClick={leave} aria-label="Back to home" data-testid="back-home"><i className="brand-back" aria-hidden="true">‹</i><span>A</span><b>ANIK <small>BOT SMASH</small></b></button>
       <div className="sd-challenge-label">{challengeTitle(code)} · {arena.rulesVersion===1?'CLASSIC':'XL ARENA'}</div>
       <nav>
         <button onClick={()=>openPanel('board')} aria-label="Local leaderboard" data-testid="sd-board"><Trophy/></button>
@@ -216,7 +216,7 @@ export default function ShowdownGame({invitation,onExit}){
       {target!==null&&<div className="sd-invite" data-testid="sd-invite"><b>BEAT {target.toLocaleString()} POINTS</b><small>Same arena seed. Shared score is not server verified.</small></div>}
       <div className="sd-mode-tabs"><button className={/^sd[12]-d/.test(code)?'selected':''} onClick={()=>changeChallenge(dailyChallenge())} data-testid="sd-daily"><Calendar size={16}/> DAILY</button><button onClick={()=>changeChallenge(newChallenge(crypto.getRandomValues(new Uint32Array(1))[0]))} data-testid="sd-remix"><Shuffle size={16}/> NEW CHALLENGE</button></div>
       <button className="sd-primary" onClick={start} disabled={!ready} data-testid="sd-start"><Play size={18} fill="currentColor"/>{ready?'PLAY · 60 SECONDS':'LOADING 3D ARENA…'}<span>↗</span></button>
-      <div className="sd-lobby-bottom"><button onClick={leave}><Flag size={15}/> RACE & EXPLORE</button><button onClick={()=>openPanel('board')}><Trophy size={15}/> MY HIGH SCORES</button></div>
+      <div className="sd-lobby-bottom"><button onClick={leave} data-testid="all-modes"><Flag size={15}/> ALL GAME MODES</button><button onClick={()=>openPanel('board')}><Trophy size={15}/> MY HIGH SCORES</button></div>
       <small className="sd-hint">WASD / arrows to drive · Space to drift · Or use two-thumb controls. No sign-in.</small>
     </section></div>}
     {phase==='countdown'&&<div className="sd-countdown"><span>MAKE IT COUNT</span><strong>{countdown}</strong><small>Hold GAS. Aim for the robot ahead.</small></div>}

@@ -66,7 +66,7 @@ test('garage upgrades affect real driving physics in a new session',async({page}
 })
 test('main game offers a direct Invite Friend shortcut without opening the code screen',async({page},info)=>{
  await page.goto('./')
- await expect(page.getByTestId('sd-start')).toBeEnabled({timeout:60000})
+ await expect(page.getByTestId('home')).toBeVisible({timeout:60000})
  await expect(page.getByTestId('quick-invite-friend')).toBeVisible()
  await page.getByTestId('quick-invite-friend').click()
  await expect(page.getByRole('dialog',{name:'Play with friends'})).toBeVisible({timeout:60000})

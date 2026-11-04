@@ -10,6 +10,7 @@ import { advanceExplore, fastTravel, initialExploreState, LANDMARK_OBSTACLES } f
 import { OpenWorldDecor, RelicMarkers } from './OpenWorldDecor.jsx'
 import {makeNpcs, advanceNpcs, applyRamming} from './npcAI.js'
 import {initialChatter,pickChatter} from './chatter.js'
+import {playerProgress,rivalProgress,standings,raceEntries,finalStandings,RACE_DISTANCE,DIFFICULTY} from './standings.js'
 import NpcActors from './NpcActors.jsx'
 import VoxelVillagers from './VoxelVillagers.jsx'
 import {makeVillagers,advanceVillagers,nearbyVillager,talkToVillager} from './villagerAI.js'
@@ -85,7 +86,13 @@ function TrackFx({ vehicleRef, phase }) {
   </group>
 }
 
-function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, setHud, onEvent, onPhase }) {
+// Position, field size and every kart's map position for the HUD and minimap.
+function liveOrder(player,npcs,finished){
+  const order=standings([{id:'player',progress:playerProgress(player)},...raceEntries(npcs,finished)])
+  return {position:order.findIndex(e=>e.id==='player')+1,fieldSize:order.length,
+    rivalDots:npcs.filter(n=>n.kind==='racer').map(n=>({id:n.id,x:n.x,z:n.z,color:n.color,out:n.respawn>0}))}
+}
+function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, difficulty='normal', setHud, onEvent, onPhase }) {
   const battleStore=useBattleStore()
   const lastBattleEnabled=useRef(battleStore.enabled)
   const rigid = useRef(null)
@@ -96,6 +103,9 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
   const lastCoinTick = useRef(new Map())
   const chatter = useRef({state:initialChatter(),clock:0,scan:0})
   const nextCull = useRef(0)
+  // Race clock time at which each rival crossed the line for the last time.
+  const rivalFinish = useRef({})
+  const finalResults = useRef(null)
   const lastWeather = useRef('clear')
   const { camera } = useThree()
   // Freeze the visible timer on the exact simulation state at the pause
@@ -122,7 +132,9 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     battleRef.current=initialBattle()
     battleStore.actions={bomb:0,mine:0,item:0}
     battleStore.update(battleSnapshot(battleRef.current,phase,mode))
-    npcRef.current=makeNpcs(mode)
+    npcRef.current=makeNpcs(mode,DIFFICULTY[difficulty]?.pace??1)
+    rivalFinish.current={}
+    finalResults.current=null
     villagerRef.current=makeVillagers()
     elapsedHudRefresh.current = 0
     lastCoinTick.current = new Map()
@@ -135,8 +147,8 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
       rigid.current.setRotation({x:0,y:Math.sin(fresh.yaw/2),z:0,w:Math.cos(fresh.yaw/2)},true)
       rigid.current.setNextKinematicTranslation({x:fresh.x,y:0,z:fresh.z})
     }
-    setHud({ ...fresh, countdown: 3, coins: 0, botsDefeated:0, smashScore:0, rivalKnockouts:0, wildlifeKnockouts:0, rivalsActive:npcRef.current.filter(n=>n.kind==='racer').length, wildlifeActive:mode==='explore'?8:0 })
-  }, [resetToken, mode, setHud])
+    setHud({ ...fresh, countdown: 3, coins: 0, botsDefeated:0, smashScore:0, rivalKnockouts:0, wildlifeKnockouts:0, rivalsActive:npcRef.current.filter(n=>n.kind==='racer').length, wildlifeActive:mode==='explore'?8:0, position:null, results:null })
+  }, [resetToken, mode, difficulty, setHud])
 
   useEffect(()=>{
     if(mode!=='explore'||!warpRequest)return
@@ -255,7 +267,14 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
         lastWeather.current=weatherClockRef.current.kind
         onEvent('weather-change',{...next,weatherLabel:weatherClockRef.current.label})
       }
-      if(mode==='race' && next.event==='finished') onPhase('finished')
+      if(mode==='race'){
+        for(const n of npcRef.current)if(n.kind==='racer'&&rivalFinish.current[n.id]==null&&rivalProgress(n)>=RACE_DISTANCE)rivalFinish.current[n.id]=next.elapsed
+        if(next.event==='finished'){
+          const table=finalStandings(next.elapsed,npcRef.current,rivalFinish.current)
+          finalResults.current=table
+          onPhase('finished')
+        }
+      }
     }
     if(cullRoots && (nextCull.current-=frameDt)<=0){
       nextCull.current=.35
@@ -313,6 +332,8 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
         windSpeed:weatherClockRef.current.windSpeed,daylight:weatherClockRef.current.daylight,
         inWater:!!next.inWater,waterTimer:next.waterTimer||0,
         submersion:next.submersion||0,waterId:next.waterId||null,
+        ...(mode!=='race'?{}:finalResults.current?{results:finalResults.current,position:finalResults.current.findIndex(e=>e.player)+1,fieldSize:finalResults.current.length}
+          :liveOrder(next,npcRef.current,rivalFinish.current)),
       })
     }
   })

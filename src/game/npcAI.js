@@ -4,7 +4,7 @@
  */
 import { TRACK, LANE_OFFSETS, GRID_LANES, LANE_WIDTH, START_INDEX } from './track.js'
 
-const RACE_ARC = [0]
+export const RACE_ARC = [0]
 for (let i=0;i<TRACK.length;i++) {
   const a=TRACK[i], b=TRACK[(i+1)%TRACK.length]
   RACE_ARC.push(RACE_ARC[i]+Math.hypot(b.x-a.x,b.z-a.z))
@@ -64,14 +64,15 @@ function along(points,arcs,metres,lane=0) {
 }
 export function trackAt(distance,lane=0){return along(TRACK,RACE_ARC,distance,lane)}
 
-export function makeNpcs(mode='race') {
+/** `pace` scales rival race speed for the chosen difficulty (1 = normal). */
+export function makeNpcs(mode='race',pace=1) {
   const racers=(mode==='race'?RIVALS:PATROLLING).map(def=>{
     const arc=mode==='race'?RACE_ARC[def.index]:0
     const distance=mode==='race'?arc:12+def.patrol*20
     // Race lanes span the six-lane circuit; open-world trails are narrower.
     const lane=mode==='race'?def.lane:def.patrolLane
     const at=mode==='race'?trackAt(distance,lane):along(PATHS[def.patrol],PATROL_ARCS[def.patrol],distance,lane)
-    return {...def,...at,lane,laneNow:lane,home:undefined,travel:distance,speed:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
+    return {...def,...at,lane,laneNow:lane,home:undefined,travel:distance,speed:mode==='race'?def.speed*pace:def.speed,health:def.maxHp,hitCooldown:0,respawn:0,burst:0,stun:0,laps:0}
   })
   if(mode!=='explore')return racers
   const animals=CRITTERS.map((def,i)=>({

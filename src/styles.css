@@ -425,3 +425,18 @@ button{touch-action:manipulation;cursor:pointer}
 .intro-home{margin:0 0 14px}
 @media(orientation:landscape) and (max-height:520px){.intro-home{margin-bottom:6px;height:30px}}
 @media(pointer:coarse) and (orientation:landscape){.gp-map-card{width:108px}.gp-race .hud .bottom-right{top:auto;bottom:130px}.gp-race .speedometer{transform-origin:bottom right}}
+/* ===== Explore HUD: board and radar minimap ===== */
+.gp-weather{gap:5px}.gp-weather b{font-weight:900;color:#d8f4ff}.gp-weather svg{color:#9fe3ff!important}.gp-weather.night svg{color:#c9b8ff!important}
+.ex-board .gp-time em{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2ffb4}
+.ex-board .gp-cell{min-width:78px}
+.ex-map-card{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;background:none;border:0;backdrop-filter:none;cursor:pointer;color:inherit;font:inherit;touch-action:manipulation}
+.ex-map-card:focus-visible{outline:3px solid #d3ff71;outline-offset:3px;border-radius:50%}
+.ex-minimap{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:50%;overflow:hidden;border:2px solid rgba(232,248,240,.35);box-shadow:0 6px 24px rgba(0,0,0,.45)}
+.ex-target-ring{animation:ex-pulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes ex-pulse{50%{opacity:.35}}
+.ex-target{display:flex;align-items:center;gap:5px;max-width:100%;padding:3px 8px;border-radius:6px;background:rgba(8,18,20,.82);border:1px solid color-mix(in srgb,var(--target) 55%,transparent);font:800 9px 'DM Sans',sans-serif;letter-spacing:.6px;white-space:nowrap}
+.ex-target i{font-style:normal;color:var(--target)}.ex-target b{overflow:hidden;text-overflow:ellipsis;color:#eef7f1}.ex-target small{color:var(--target);font-size:9px}
+@media(max-width:650px){.ex-target{font-size:8px;padding:2px 6px}.ex-target small{font-size:8px}}
+@media(pointer:coarse) and (orientation:landscape){.ex-map-card{width:112px}}
+@media(prefers-reduced-motion:reduce){.ex-target-ring{animation:none}}
+@media(pointer:coarse) and (orientation:landscape){.mode-explore .hud .bottom-right{top:auto;bottom:130px}.mode-explore .speedometer{transform-origin:bottom right}.ex-target{align-self:flex-end;max-width:180px}}

@@ -90,8 +90,9 @@ function TrackFx({ vehicleRef, phase }) {
 function liveOrder(player,npcs,finished){
   const order=standings([{id:'player',progress:playerProgress(player)},...raceEntries(npcs,finished)])
   return {position:order.findIndex(e=>e.id==='player')+1,fieldSize:order.length,
-    rivalDots:npcs.filter(n=>n.kind==='racer').map(n=>({id:n.id,x:n.x,z:n.z,color:n.color,out:n.respawn>0}))}
+    rivalDots:rivalDots(npcs)}
 }
+function rivalDots(npcs){return npcs.filter(n=>n.kind==='racer').map(n=>({id:n.id,x:n.x,z:n.z,color:n.color,out:n.respawn>0}))}
 function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cullRoots, npcRef, villagerRef, playerRef, weatherClockRef, phase, mode, warpRequest, talkRequest, resetToken, inputRef, cameraMode, difficulty='normal', setHud, onEvent, onPhase }) {
   const battleStore=useBattleStore()
   const lastBattleEnabled=useRef(battleStore.enabled)
@@ -126,7 +127,9 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
     }
   },[phase,mode,battleStore,battleRef])
 
-  useEffect(() => {
+  // A layout effect swaps state, karts and mode in the same commit, so no frame ever
+  // simulates explore mode on race karts (or the other way round).
+  useLayoutEffect(() => {
     const fresh = mode==='explore' ? initialExploreState() : initialRaceState()
     race.current = fresh
     battleRef.current=initialBattle()
@@ -332,7 +335,7 @@ function Racer({ battleRef, battleEnabledRef, kart, objects, obstacleIndex, cull
         windSpeed:weatherClockRef.current.windSpeed,daylight:weatherClockRef.current.daylight,
         inWater:!!next.inWater,waterTimer:next.waterTimer||0,
         submersion:next.submersion||0,waterId:next.waterId||null,
-        ...(mode!=='race'?{}:finalResults.current?{results:finalResults.current,position:finalResults.current.findIndex(e=>e.player)+1,fieldSize:finalResults.current.length}
+        ...(mode!=='race'?{rivalDots:rivalDots(npcRef.current)}:finalResults.current?{results:finalResults.current,position:finalResults.current.findIndex(e=>e.player)+1,fieldSize:finalResults.current.length}
           :liveOrder(next,npcRef.current,rivalFinish.current)),
       })
     }

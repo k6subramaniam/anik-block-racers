@@ -2,6 +2,14 @@
 
 **Real playable 3D world** for Samsung Galaxy and modern Android browsers. Based on the original Higgsfield 3D Jutsu asset scene, updated with five themed zones and connecting roads. The game remains an original voxel racer, not a Minecraft/Mojang product.
 
+## v5.1 — Explore minimap
+
+- **Radar minimap in Explore:** a round, north-up map centred on your kart, about 280 m across. It shows the biomes, frontier highways, the Grand Circuit, lakes, every district (dashed until you discover it), relics you haven't collected yet and the patrolling rivals. Your kart is the lime arrow (`src/game/ExploreMinimap.jsx`).
+- **Where next:** the map marks the nearest undiscovered district and, once all ten are found, the nearest relic left. A label under the map gives its name and distance. When it's off the map, an arrow on the rim points the way (`src/game/exploreGuide.js`).
+- **Tap the radar** to open the full world map and fast travel.
+- **Explore board:** districts, relics, time and current place in one strip, matching the Grand Prix board. Weather and the game clock moved into a small chip on both boards.
+- **Fix:** opening Explore straight from the home screen no longer throws an error on the first frame. Mode, kart state and rivals now switch in the same render.
+
 ## v5 — Home screen, race position, track map and results
 
 - **Home screen:** the game now opens on one screen with every mode: Grand Prix, Battle Circuits, Bot Smash and Explore, plus Invite a Friend. Each card shows your progress (best Grand Prix finish, battle wins, Bot Smash high score) and marks the mode you played last. Challenge links (`?challenge=`), `?view=world`, `?view=battle` and the install shortcuts still open their modes directly.

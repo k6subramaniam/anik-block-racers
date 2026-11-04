@@ -89,11 +89,15 @@ export function advanceExplore(state,input,dt,obstacles=[],weather=null){
   const delta=Math.min(Math.max(0,dt),.05)
   const moved=moveKart(state,input,delta,obstacles,{mode:'explore',bounds:WORLD_BOUNDS,weather})
   let next=advanceWater({...moved,elapsed:state.elapsed+delta,portalCooldown:Math.max(0,(state.portalCooldown||0)-delta)},delta)
+  // A frame can arrive on the race state just before the explore state replaces it.
+  const visited=state.visited||[]
+  next.collected=next.collected||[]
   const region=zoneAt(next)
   const nearWater=WATER_BODIES.find(w=>Math.hypot((next.x-w.x)/w.rx,(next.z-w.z)/w.rz)<1.55)
   next.zoneName=region?.name||nearWater?.name||'VOXEL WILDS'
-  if(region && !state.visited.includes(region.id)){
-    next.visited=[...state.visited,region.id]
+  next.visited=visited
+  if(region && !visited.includes(region.id)){
+    next.visited=[...visited,region.id]
     next.event='discovery'
   }
   for(const item of RELICS){

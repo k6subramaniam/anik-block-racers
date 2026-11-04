@@ -132,6 +132,7 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
   },[gltf.scene])
   useEffect(()=>{onReady(true);return()=>kart.resources.dispose()},[kart,onReady])
   const kartRoot=useRef(),robots=useRef({}),bursts=useRef({}),hudTime=useRef(0),sun=useRef()
+  const botDefs=useMemo(()=>new Map(arena.bots.map(d=>[d.id,d])),[arena])
   const envRef=useRef(showdownWeather(arena,0)),playerRef=useRef(engineRef.current.state.player)
   const scratch=useMemo(()=>({target:new THREE.Vector3(),position:new THREE.Vector3(),sky:new THREE.Color(),overcast:new THREE.Color('#68818c')}),[])
   useLayoutEffect(()=>{
@@ -174,7 +175,8 @@ function PlayField({engineRef,inputRef,phase,arena,budget,onReady,onHud,onFinish
       const root=robots.current[n.id],burst=bursts.current[n.id]
       if(root){
         root.visible=n.health>0&&n.respawn<=0;root.position.set(n.x,0,n.z);root.rotation.y=n.yaw
-        const walk=Math.sin((state.ticks??state.tick??0)*(4+n.rate*5)+(n.phase||0)*3)
+        const def=botDefs.get(n.id)
+        const walk=Math.sin((state.ticks??state.tick??0)*STEP*(5+(def?.rate??.5)*6)+(def?.phase??0)*3)
         const legL=root.getObjectByName('legL'),legR=root.getObjectByName('legR'),armL=root.getObjectByName('armL'),armR=root.getObjectByName('armR'),body=root.getObjectByName('body')
         if(legL&&legR){legL.rotation.x=walk*.55;legR.rotation.x=-walk*.55}
         if(armL&&armR){armL.rotation.x=-walk*.45;armR.rotation.x=walk*.45}
